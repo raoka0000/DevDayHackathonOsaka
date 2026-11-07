@@ -1,0 +1,4 @@
+interface:
+  display_name: "開発イシュー作成"
+  short_description: "企画と実装の差から、受け入れ条件と依存関係を持つ開発イシューを作成する"
+  default_prompt: "$create-issues を使って、未完了のMVPを優先順にイシュー化してください。"

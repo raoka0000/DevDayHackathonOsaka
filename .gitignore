@@ -1,26 +1,9 @@
-# Local credentials
+node_modules/
+dist/
+.wrangler/
+.dev.vars
 .env
 .env.*
 !.env.example
-.dev.vars
-.dev.vars.*
-!.dev.vars.example
-.wrangler/
-*.pem
-*.key
-
-# Dependencies and generated files
-node_modules/
-.next/
-dist/
-build/
-coverage/
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-
-# Local OS and editor files
-.DS_Store
-.idea/
 *.log
+.DS_Store

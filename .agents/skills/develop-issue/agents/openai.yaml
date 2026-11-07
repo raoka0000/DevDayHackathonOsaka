@@ -1,0 +1,4 @@
+interface:
+  display_name: "イシューから開発"
+  short_description: "指定イシューの受け入れ条件に沿って実装し、検証結果と残作業を引き継ぐ"
+  default_prompt: "$develop-issue を使って、指定したイシューを実装・検証してください。"
