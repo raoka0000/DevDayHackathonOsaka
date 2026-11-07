@@ -3,10 +3,36 @@ export const chords = ['C', 'Cm', 'D', 'Dm', 'E', 'Em', 'F', 'Fm', 'G', 'Gm', 'A
 export type Chord = typeof chords[number];
 export type Song = { bpm: number; pattern: 'block' | 'arpeggio'; bars: Chord[] };
 export type Part = { id: string; name: string; notes: Note[]; instrument?: InstrumentId; volume: number; muted: boolean; solo: boolean };
-export type Track = Song & { notes: Note[]; instrument?: InstrumentId; name?: string; volume?: number; muted?: boolean; solo?: boolean; layers?: Part[] };
+export type Track = Song & { notes: Note[]; instrument?: InstrumentId; name?: string; volume?: number; muted?: boolean; solo?: boolean; layers?: Part[]; emotions?: Emotion[] };
 export const MAX_PARTS = 8;
 export type Note = { pitch: number; startBeat: number; durationBeats: number; velocity: number };
 export const sample: Song = { bpm: 100, pattern: 'arpeggio', bars: ['C','G','Am','F','C','G','F','C'] };
+// 感情プリセットを均等に混ぜるローカル生成。画像分析・AIは使わない。
+export const emotions = ['明るい', '温かい', '穏やか', '切ない', '力強い', '幻想的'] as const;
+export type Emotion = typeof emotions[number];
+const emotionProfiles: Record<Emotion, Song> = {
+  明るい: { bpm: 124, pattern: 'arpeggio', bars: ['C','G','F','G','C','Am','F','C'] },
+  温かい: { bpm: 96, pattern: 'block', bars: ['C','Em','F','C','Am','F','G','C'] },
+  穏やか: { bpm: 72, pattern: 'block', bars: ['C','F','C','G','Am','F','G','C'] },
+  切ない: { bpm: 84, pattern: 'arpeggio', bars: ['Am','Em','F','C','Dm','Am','E','Am'] },
+  力強い: { bpm: 144, pattern: 'block', bars: ['Am','F','C','G','Am','F','G','Am'] },
+  幻想的: { bpm: 90, pattern: 'arpeggio', bars: ['Em','Am','Dm','Em','F','Am','Bm','Em'] },
+};
+export function songForEmotions(input: unknown): Song & { emotions: Emotion[] } {
+  if (!Array.isArray(input) || input.length === 0 || input.length > emotions.length) throw new Error('感情を1つ以上選んでください。');
+  const selected = emotions.filter(emotion => input.includes(emotion));
+  if (selected.length !== input.length) throw new Error('感情の指定が不正、または重複しています。');
+  const profiles = selected.map(emotion => emotionProfiles[emotion]);
+  const song: Song & { emotions: Emotion[] } = {
+    emotions: selected,
+    bpm: Math.round(profiles.reduce((sum, profile) => sum + profile.bpm, 0) / profiles.length),
+    pattern: profiles.filter(profile => profile.pattern === 'arpeggio').length >= profiles.length / 2 ? 'arpeggio' : 'block',
+    // 各感情の進行を小節ごとに交互に使い、最後は先頭の感情の終止に戻る。
+    bars: Array.from({ length: 8 }, (_, bar) => profiles[bar === 7 ? 0 : bar % profiles.length].bars[bar]),
+  };
+  validateSong(song);
+  return song;
+}
 export function validateSong(song: Song) {
   if (!Number.isInteger(song.bpm) || song.bpm < 60 || song.bpm > 160 || !['block','arpeggio'].includes(song.pattern) || song.bars.length !== 8 || song.bars.some(c => !chords.includes(c))) throw new Error('曲の設定が不正です。');
 }
