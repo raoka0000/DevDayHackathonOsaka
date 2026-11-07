@@ -3,3 +3,5 @@
 .workspace>*{min-width:0}
 
 .regenerate{background:#fff3d8;padding:16px;border-radius:8px;font-size:12px;line-height:1.8;margin-bottom:18px}
+
+.timeline[role=slider]{cursor:ew-resize;height:14px;border:5px solid #f1f3eb;min-width:30px}.timeline[role=slider]>div{border-radius:3px}

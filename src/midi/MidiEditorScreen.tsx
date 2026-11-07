@@ -8,6 +8,10 @@ import './midi.css';
 export type MidiEditorScreenProps = {
   track: Track;
   beat: number;
+  cursorBeat: number;
+  onSeek: (beat: number) => void;
+  onPause: () => void;
+  onRestart: () => Promise<void>;
   canUndo: boolean;
   loading: boolean;
   error: string;
@@ -19,7 +23,7 @@ export type MidiEditorScreenProps = {
 };
 
 export function MidiEditorScreen({
-  track, beat, canUndo, loading, error, onEdit, onStart, onPlay, onUndo, onDownload,
+  track, beat, cursorBeat, onSeek, onPause, onRestart, canUndo, loading, error, onEdit, onStart, onPlay, onUndo, onDownload,
 }: MidiEditorScreenProps) {
   const [selectedId,setSelectedId]=useState('main');
   const [partError,setPartError]=useState('');
@@ -43,9 +47,9 @@ export function MidiEditorScreen({
   }
   const visibleInstruments = instruments.filter(item => (library === 'samples' ? 'file' in item : !('file' in item)) && (item.name + item.short + item.family).toLowerCase().includes(query.toLowerCase()));
   const playing = beat >= 0;
-  const position = Math.max(0, beat);
+  const position = Math.max(0, cursorBeat);
   const bar = Math.floor(position / 4);
-  const transport = () => (playing || loading) ? onStart() : void onPlay();
+  const transport = () => (playing || loading) ? onPause() : void onPlay();
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       if (event.target instanceof HTMLElement && (event.target.matches('input,select,textarea,button,a') || event.target.isContentEditable)) return;
@@ -62,7 +66,7 @@ export function MidiEditorScreen({
     </nav>
     <div className="studio-title"><div><p>YOUR SOUND, YOUR STORY</p><h1>晴れた日の思い出 <span>固定サンプル</span></h1></div><button className="studio-export" onClick={onDownload}>↓ MIDIを書き出す</button></div>
     <section className="studio-transport" aria-label="再生コントロール">
-      <div className="transport-buttons"><button aria-label="最初から再生" onClick={onPlay}>↺</button><button aria-label="停止" onClick={onStart}>■</button><button className={'studio-play '+(playing?'is-playing':'')} onClick={transport}>{loading?'■ 読み込み中':playing?'■ 停止':'▶ 再生'}</button></div>
+      <div className="transport-buttons"><button aria-label="最初から再生" onClick={onRestart}>↺</button><button aria-label="停止" onClick={onStart}>■</button><button className={'studio-play '+(playing?'is-playing':'')} onClick={transport}>{loading?'■ 読み込み中':playing?'Ⅱ 一時停止':'▶ 再生'}</button></div>
       <div className="position-display"><strong>{String(bar+1).padStart(3,'0')}<em>:</em>{String(Math.floor(position%4)+1).padStart(2,'0')}<em>:</em>{String(Math.floor(position%1*960)).padStart(3,'0')}</strong><small>小節 : 拍 : TICK</small></div>
       <label className="tempo-control"><input aria-label="テンポ BPM" type="number" min="60" max="160" step="1" key={track.bpm} defaultValue={track.bpm} onFocus={onStart} onBlur={e=>{const bpm=Number(e.target.value);if(Number.isInteger(bpm)&&bpm>=60&&bpm<=160){onEdit({...track,bpm});setTempoError('');}else{e.target.value=String(track.bpm);setTempoError('テンポは60〜160の整数で指定してください。');}}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><small>BPM · 60–160</small></label>
       <div className="meter-display"><strong>4 / 4</strong><small>拍子</small></div>
@@ -89,16 +93,16 @@ export function MidiEditorScreen({
             <div className="track-controls"><button className="track-select" aria-pressed={chosen} aria-label={`${part.name}を選択`} onClick={()=>{onStart();setSelectedId(part.id);setLibrary('file' in sound?'samples':'synth');}}><span>{String(index+1).padStart(2,'0')}</span><div><strong>{part.name}</strong><small>{sound.short} · CH {index+1}</small></div></button>
               <div className="track-mixer"><button className={part.muted?'enabled mute':''} aria-label={`${part.name}をミュート`} aria-pressed={part.muted} onClick={()=>changePart(part.id,{muted:!part.muted})}>M</button><button className={part.solo?'enabled solo':''} aria-label={`${part.name}をソロ`} aria-pressed={part.solo} onClick={()=>changePart(part.id,{solo:!part.solo})}>S</button><TrackVolume name={part.name} value={part.volume} onStart={onStart} onApply={volume=>changePart(part.id,{volume})}/></div>
             </div>
-            <button className="clip-area" aria-label={`${part.name}の音符を編集`} onClick={()=>{onStart();setSelectedId(part.id);setLibrary('file' in sound?'samples':'synth');}}><div className="clip-ruler">{track.bars.map((_,i)=><span key={i}>{i+1}</span>)}</div><div className="midi-clip"><div className="clip-title"><span>♫ {sound.name}</span><span>{part.notes.length} notes</span></div><svg viewBox="0 0 1000 60" preserveAspectRatio="none" role="img" aria-label={`${part.name}の音符の全体像`}>{part.notes.map((note,i)=><rect key={i} x={note.startBeat/32*1000} y={(84-note.pitch)/37*56} width={Math.max(2,note.durationBeats/32*1000)} height="2.5" rx="1"/>)}</svg>{!part.notes.length&&<span className="empty-clip">ピアノロールから音符を追加</span>}</div>{playing&&<div className="arrangement-playhead" style={{left:`${position/32*100}%`}}/>}</button>
+            <button className="clip-area" aria-label={`${part.name}の音符を編集`} onClick={()=>{onStart();setSelectedId(part.id);setLibrary('file' in sound?'samples':'synth');}}><div className="clip-ruler">{track.bars.map((_,i)=><span key={i}>{i+1}</span>)}</div><div className="midi-clip"><div className="clip-title"><span>♫ {sound.name}</span><span>{part.notes.length} notes</span></div><svg viewBox="0 0 1000 60" preserveAspectRatio="none" role="img" aria-label={`${part.name}の音符の全体像`}>{part.notes.map((note,i)=><rect key={i} x={note.startBeat/32*1000} y={(84-note.pitch)/37*56} width={Math.max(2,note.durationBeats/32*1000)} height="2.5" rx="1"/>)}</svg>{!part.notes.length&&<span className="empty-clip">ピアノロールから音符を追加</span>}</div><div className={'arrangement-playhead '+(!playing?'paused':'')} style={{left:`${position/32*100}%`}}/></button>
           </div>;
         })}</div>
         <div className="selected-track-settings"><label>編集中<input aria-label="選択トラック名" key={selected.id+selected.name} defaultValue={selected.name} maxLength={60} onFocus={onStart} onBlur={event=>{if(event.target.value.trim())changePart(selected.id,{name:event.target.value.trim()});else event.target.value=selected.name;}} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur();}}/></label><span>{instrument.name} · {selected.notes.length}音</span><button className="studio-button" disabled={selected.id==='main'} onClick={()=>{onEdit(removePart(track,selected.id));setSelectedId('main');}}>トラックを削除</button></div>
         {partError&&<p role="alert" className="error">{partError}</p>}
         <div className="roll-toolbar"><div className="roll-tab">▥ ピアノロール</div><div className="edit-tools" aria-label="音符の編集ツール"><button aria-pressed={tool==='draw'} onClick={()=>setTool('draw')}>✎ 追加・選択</button><button aria-pressed={tool==='erase'} onClick={()=>setTool('erase')}>⌫ 消しゴム</button></div><label>グリッド<select aria-label="グリッド幅" value={snap} onChange={e=>setSnap(Number(e.target.value))}><option value="0.25">1/16</option><option value="0.5">1/8</option><option value="1">1/4</option></select></label><label className="zoom-control">ズーム<input aria-label="ピアノロールのズーム" type="range" min="32" max="96" step="8" value={zoom} onChange={e=>setZoom(Number(e.target.value))}/><span>{Math.round(zoom/48*100)}%</span></label></div>
-        <PianoRoll key={selected.id} track={{...track,notes:selected.notes,instrument:selected.instrument}} beat={beat} onEdit={next=>changePart(selected.id,{notes:next.notes})} onStart={onStart} beatWidth={zoom} snap={snap} tool={tool}/>
+        <PianoRoll key={selected.id} track={{...track,notes:selected.notes,instrument:selected.instrument}} beat={position} onSeek={onSeek} onEdit={next=>changePart(selected.id,{notes:next.notes})} onStart={onStart} beatWidth={zoom} snap={snap} tool={tool}/>
         {error&&<p role="alert" className="error">{error}</p>}
       </section>
     </div>
-    <footer className="studio-footer"><span><i/> {instrument.name} <b> / </b> {parts.reduce((total,part)=>total+part.notes.length,0)}音 <b> / </b> {parts.length}トラック・8小節</span><span>Space 再生・停止　·　Delete 音符削除　·　Esc ドラッグ取消</span><span>再読み込みで編集内容は消えます</span></footer>
+    <footer className="studio-footer"><span><i/> {instrument.name} <b> / </b> {parts.reduce((total,part)=>total+part.notes.length,0)}音 <b> / </b> {parts.length}トラック・8小節</span><span>Space 再生・一時停止　·　Delete 音符削除　·　Esc ドラッグ取消</span><span>再読み込みで編集内容は消えます</span></footer>
   </main>;
 }

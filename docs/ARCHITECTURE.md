@@ -89,3 +89,11 @@ AppのEditorStateは曲全体を保持する。MIDI画面内には選択IDだけ
 playbackPartsはミュートとソロを解決し、PlayerとMIDIが同じ対象Partを使う。Playerはすべての必要サンプルを読み込んだ後、単一AudioContextの同じ開始時刻に各Partを予約し、volumeをGainに反映する。全出力をDynamicsCompressorに通して重ね合わせのピークを抑える。編集・停止・読み込み世代の制御は従来どおり共通。
 
 複数PartのMIDIはFormat 1。テンポ/4拍子のconductorと、各再生対象Partの名前/Program Change/CC7音量/Note On-Offを別チャンクで出力する。チャンネルはPart配列の0〜7で、打楽器用CH10を避ける。全チャンク終端は15360tick（32拍、480PPQN）。同時刻はメタ情報・楽器指定・音量・Note Off・Note Onの順に並べる。単一トラックはFormat 0を維持し、全ミュート時もテンポ/拍子/終端を残す。音声処理のコンプレッサーや音源自体はMIDIに含まれない。
+
+## 再生カーソルと途中再生
+
+Appは再生状態beat（停止時-1）と再生カーソルcursorBeatを分けて保持する。カーソルは編集データ・Undoに含めない。seekは0〜31.75拍を0.25拍単位に揃え、停止中は位置だけ更新し、再生要求中は古いContextを閉じて新位置から再生する。playingRequestedのrefによりresume/音源ロード待ちの連続シークも最後の要求を維持する。一時停止はPlayer.currentBeat()の音声クロック位置を保存、停止/編集/遷移は先頭へ戻す。
+
+Player.playの第4引数fromBeat（既定0）は有限・0以上32未満を検証する。シーク前に終わる音符を除外し、以後の音符を全Partで同じ開始クロックに予約する。位置をまたぐ音符は残り区間だけを演奏し、サンプルはAudioBufferSourceNode.startのoffsetで途中から、シンセは残り区間で再発音する。サンプル自体が自然減衰で終わっている場合は発音しない。曲末判定もfromBeatを含む共通クロックから計算する。
+
+MIDI画面の位置指定はピアノロール内の拍目盛りに集約する。拍目盛りはbuttonとしてクリックとキーボードで操作できる。MIDI出力の範囲はカーソルと独立し、常に全曲。
