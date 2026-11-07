@@ -37,7 +37,7 @@ flowchart LR
 
 ## 再生と出力
 
-Playerはinstruments.tsの設定に応じてWeb AudioのBufferSource（サンプル音源）またはOscillatorとGain（内蔵シンセ）を使う。音色IDの未指定時は内蔵エレクトリックピアノ。外部の音楽ライブラリには依存しない。位置表示はAudioContext.currentTimeを基準に計算する。開始はユーザー操作に限定し、停止・再再生・編集・画面遷移で前のContextを閉じる。resume待ちの古い演奏も予約しない。
+Playerはinstruments.tsの設定に応じてWeb AudioのBufferSource（サンプル音源）またはOscillatorとGain（内蔵シンセ）を使う。Appの初期曲・サンプル再読込はpianoを明示し、FluidR3の実音源を使う。旧データなど音色IDの未指定時は互換性のため内蔵エレクトリックピアノ。外部の音楽ライブラリには依存しない。位置表示はAudioContext.currentTimeを基準に計算する。開始はユーザー操作に限定し、停止・再再生・編集・画面遷移で前のContextを閉じる。resume待ちの古い演奏も予約しない。
 
 MIDIはmusic.ts内でエンコードする。音符・テンポ・拍子・曲終端を含め、同時刻はNote Offを先に並べる。ファイルの出力成功と外部DAWでの読み込み確認は別の検証として扱う。
 

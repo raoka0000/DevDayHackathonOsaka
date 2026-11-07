@@ -5,7 +5,7 @@ import { MidiEditorScreen } from './midi/MidiEditorScreen';
 import { Player, type PlaybackStatus } from './player';
 import './style.css';
 function App() {
-  const [state,setState]=useState<EditorState>(()=>({current:createTrack(sample),history:[]}));
+  const [state,setState]=useState<EditorState>(()=>({current:{...createTrack(sample),instrument:'piano'},history:[]}));
   const {current:song,history}=state;
   const [pending,setPending]=useState<{settings:Song;bar?:number}>();
   const [screen,setScreen]=useState(()=>window.location.hash==='#/midi'?'midi':'home');
@@ -36,7 +36,7 @@ function App() {
   <label className={'photo '+(photo?'has-photo':'')} htmlFor="photo">{photo?<img src={photo} alt="選択した写真のプレビュー"/>:<div className="photo-art"><span className="sun"/><span className="hill back"/><span className="hill"/><span className="photo-icon">＋</span></div>}<span className="photo-caption">{filename||'写真を1枚選ぶ'}<small>JPEG / PNG / WebP・10MBまで</small></span></label>
   <input id="photo" className="file" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>10*1024*1024){setError('JPEG・PNG・WebPの10MB以下の画像を選んでください。');e.target.value='';return;}URL.revokeObjectURL(photoRef.current);const url=URL.createObjectURL(f);photoRef.current=url;setPhoto(url);setFilename(f.name);setError('');}}/>
   <p className="privacy">写真はこのブラウザ内で表示します。外部送信・保存は行いません。</p>
-  <div className="sample"><span className="pill">固定サンプル</span><h3>晴れた日の思い出</h3><div className="tags"><span>明るい</span><span>温かい</span><span>穏やか</span></div><p>やさしいCメジャーのコード進行。写真の分析は未接続のため、どの写真でも同じサンプルを使います。</p><button className="secondary full" onClick={()=>edit(createTrack(sample))}>サンプルを読み直す ↗</button><small>編集中の曲を置き換えます。元に戻せます。</small></div>
+  <div className="sample"><span className="pill">固定サンプル</span><h3>晴れた日の思い出</h3><div className="tags"><span>明るい</span><span>温かい</span><span>穏やか</span></div><p>やさしいCメジャーのコード進行。写真の分析は未接続のため、どの写真でも同じサンプルを使います。</p><button className="secondary full" onClick={()=>edit({...createTrack(sample),instrument:'piano'})}>サンプルを読み直す ↗</button><small>編集中の曲を置き換えます。元に戻せます。</small></div>
   </aside><section className="editor"><div className="section-top"><h2><small>02</small> 伴奏を編集</h2><span>8 BARS / 4 BEATS</span></div><div className="song-title"><div><p className="eyebrow">SAMPLE TRACK</p><h2>晴れた日の思い出 <span>↗</span></h2></div><span className="key">C major <small>初期キー</small></span></div>
   <div className="transport"><button className="play" onClick={bar>=0||playbackStatus==='loading'?stop:play}>{playbackStatus==='loading'?'■ 読み込み中':bar>=0?'■ 停止':'▶ 再生する'}</button><div className="timeline"><div style={{width:`${bar<0?0:beat/32*100}%`}}/></div><span>{bar>=0?`${bar+1} / 8 小節`:`約${Math.round(32*60/song.bpm)}秒`}</span><button className="icon-button" aria-label="最初から再生" onClick={play}>↺</button></div>
   <div className="settings"><label>テンポ <span><strong>{song.bpm}</strong> BPM</span><input aria-label="テンポ" type="range" min="60" max="160" value={song.bpm} onChange={e=>edit({...song,bpm:Number(e.target.value)})}/><div className="range-labels"><small>ゆったり 60</small><small>160 軽快に</small></div></label><label>伴奏パターン<select value={song.pattern} onChange={e=>request({...song,pattern:e.target.value as Song['pattern']})}><option value="arpeggio">分散和音 — 音をひとつずつ</option><option value="block">ブロックコード — 音を重ねて</option></select></label></div>

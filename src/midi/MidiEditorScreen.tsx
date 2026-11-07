@@ -24,8 +24,10 @@ export function MidiEditorScreen({
   const [snap, setSnap] = useState(.25);
   const [tool, setTool] = useState<'draw' | 'erase'>('draw');
   const [query, setQuery] = useState('');
+  const [library, setLibrary] = useState<'samples' | 'synth'>(()=>'file' in instrumentFor(track.instrument)?'samples':'synth');
   const [tempoError, setTempoError] = useState('');
   const instrument = instrumentFor(track.instrument);
+  const visibleInstruments = instruments.filter(item => (library === 'samples' ? 'file' in item : !('file' in item)) && (item.name + item.short + item.family).toLowerCase().includes(query.toLowerCase()));
   const playing = beat >= 0;
   const position = Math.max(0, beat);
   const bar = Math.floor(position / 4);
@@ -57,9 +59,10 @@ export function MidiEditorScreen({
       <aside className="instrument-panel" aria-label="音源ブラウザ">
         <div className="panel-heading"><span>音源ブラウザ</span><small>{instruments.length} SOUNDS</small></div>
         <label className="sound-search"><span>⌕</span><input aria-label="音色を検索" value={query} onChange={e=>setQuery(e.target.value)} placeholder="音色を検索…"/></label>
-        <p className="library-label">音源コレクション <span>SAMPLES + SYNTH</span></p>
-        <div className="instrument-list">{instruments.filter(item=>(item.name+item.short+item.family).toLowerCase().includes(query.toLowerCase())).map(item=><button key={item.id} className={'instrument-card '+(instrument.id===item.id?'active':'')} aria-pressed={instrument.id===item.id} onClick={()=>onEdit({...track,instrument:item.id})}><span className="instrument-icon">{item.icon}</span><span><strong>{item.name}</strong><small>{item.family} · {'file' in item?'サンプル':'シンセ'}</small></span><span className="sound-selected">{instrument.id===item.id?'●':'+'}</span></button>)}</div>
-        {!instruments.some(item=>(item.name+item.short+item.family).toLowerCase().includes(query.toLowerCase()))&&<p className="sound-empty">一致する音色がありません。</p>}
+        <div className="library-tabs" aria-label="音源の種類"><button aria-pressed={library==='samples'} onClick={()=>setLibrary('samples')}>サンプル音源 <span>6</span></button><button aria-pressed={library==='synth'} onClick={()=>setLibrary('synth')}>内蔵シンセ <span>5</span></button></div>
+        <p className="library-label">{library==='samples'?'FluidR3 GM':'内蔵コレクション'} <span>{library==='samples'?'MP3 SAMPLES':'WEB AUDIO'}</span></p>
+        <div className="instrument-list">{visibleInstruments.map(item=><button key={item.id} className={'instrument-card '+(instrument.id===item.id?'active':'')} aria-pressed={instrument.id===item.id} onClick={()=>onEdit({...track,instrument:item.id})}><span className="instrument-icon">{item.icon}</span><span><strong>{item.name}</strong><small>{item.family} · {'file' in item?'サンプル':'シンセ'}</small></span><span className="sound-selected">{instrument.id===item.id?'●':'+'}</span></button>)}</div>
+        {!visibleInstruments.length&&<p className="sound-empty">一致する音色がありません。</p>}
         <div className="sound-details"><span className="detail-label">選択中の音色</span><h2>{instrument.short}</h2><p>{instrument.description}</p><dl><div><dt>音源</dt><dd>{'file' in instrument?'FluidR3 · サンプル':'内蔵・合成音'}</dd></div><div><dt>MIDI代替指定</dt><dd>GM {instrument.program+1}</dd></div></dl><p className="sound-disclaimer">MIDIでは{instrument.gmName}を指定します。出力先の音源によって響きは変わります。</p>{'file' in instrument&&<p className="sound-credit">FluidR3 by Frank Wen · 変換 Benjamin Gleitzman<br/><a href="/soundfonts/FluidR3_GM/LICENSE-SAMPLES.html" target="_blank" rel="noreferrer">CC BY 3.0 US</a> · <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noreferrer">配布元</a></p>}</div>
       </aside>
       <section className="studio-workspace" aria-label="MIDI編集ワークスペース">
