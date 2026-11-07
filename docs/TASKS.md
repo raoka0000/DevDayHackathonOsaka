@@ -109,6 +109,13 @@ GitHub [#1](https://github.com/raoka0000/DevDayHackathonOsaka/issues/1) に投�
 - [x] create-issuesの既定投稿先をraoka0000/DevDayHackathonOsakaに設定。明示的な下書き指定または投稿失敗時のみローカル下書きを使う。
 - [x] [#1：ピアノロールで音符を直接編集できる画面を作る](https://github.com/raoka0000/DevDayHackathonOsaka/issues/1) を投稿。LOCAL-001は起票時の控えとして保持。
 
+### 追加要望：音源の収集と選択（2026-11-07）
+
+- [ ] [LOCAL-002：利用可能なMIDI音源を収集・選定する](issues/LOCAL-002.md)（GitHub未投稿）
+- [ ] [LOCAL-003：伴奏の再生音色を選べるようにする](issues/LOCAL-003.md)（GitHub未投稿、LOCAL-002に依存）
+
+GitHubへの接続・認証を確認できず、既存イシュー・PRの重複確認と投稿は未実施。認証・接続の復旧後に重複を照合し、先行課題から投稿する。製品機能は未実装。
+
 ## #1 実装・検証（2026-11-07）
 
 今回の明示依頼により追加機能のピアノロールを先に実装。公開・AI接続のMVPの未完了状態は維持します。
