@@ -34,7 +34,6 @@
 - [企画・受け入れ条件](docs/PRODUCT.md)
 - [アーキテクチャ・データ契約](docs/ARCHITECTURE.md)
 - [CloudflareのDB・保存設計](docs/DATABASE.md)
-- [3時間の実装タスク](docs/TASKS.md)
 - [ChatGPTへの開発依頼文](docs/CHATGPT_HANDOFF.md)
 - [開発ルール](AGENTS.md)（[Claude用の入口](CLAUDE.md)）
 - [開発手順・完了条件](docs/DEVELOPMENT.md)
@@ -125,7 +124,7 @@ npm run deploy
 - `wrangler.jsonc`：Cloudflare Workersの静的配信設定。
 - `tests/music.test.ts`：音符・検証・MIDIの解析テスト。
 
-次はCloudflare公開と公開環境での操作確認、その後サーバー側の画像AIと編集提案APIの接続を進めます。AIの認証情報は未設定です。実装状況と検証結果は [docs/TASKS.md](docs/TASKS.md) を参照してください。
+次はCloudflare公開と公開環境での操作確認、その後サーバー側の画像AIと編集提案APIの接続を進めます。AIの認証情報は未設定です。進捗表や予定の更新は行いません。
 
 ## 今回の検証
 
@@ -133,7 +132,7 @@ npm run deploy
 
 ## AIによるイシュー駆動開発
 
-共有スキルを `.agents/skills/` に用意しています。
+明示的にイシュー管理を依頼する場合のみ、`.agents/skills/` の共有スキルを利用できます。通常の開発ではタスク管理・記録は不要です。
 
 - [create-issues](.agents/skills/create-issues/SKILL.md)：要望・未完了タスクを調べ、受け入れ条件・検証方法・依存関係付きのイシューを作成します。
 - [develop-issue](.agents/skills/develop-issue/SKILL.md)：指定イシューから実装・検証し、進捗と残作業を記録します。
