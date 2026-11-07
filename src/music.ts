@@ -96,6 +96,41 @@ export function removePart(track: Track, id: string): Track {
   validateTrack(next); return next;
 }
 export function createTrack(song: Song): Track { return {...structuredClone(song), notes: notesFor(song)}; }
+/** AIの生成設定を、編集可能な3声の演奏に展開する。外部音声生成は使わない。 */
+export function arrangeSong(song: Song): Track {
+  validateSong(song);
+  const melody: Note[] = [], bass: Note[] = [];
+  const roots: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  let previous = 76;
+  song.bars.forEach((chord, bar) => {
+    const root = roots[chord[0]];
+    const tones = [root, (root + (chord.endsWith('m') ? 3 : 4)) % 12, (root + 7) % 12];
+    // 同じ2小節モチーフを変奏し、4・8小節目は長い音でフレーズを閉じる。
+    const rhythm = bar % 4 === 3 ? [0, 1, 2] : bar % 2 === 0 ? [0, 1, 1.5, 2.5, 3] : [0, .5, 1.5, 2, 3];
+    rhythm.forEach((beat, index) => {
+      const tone = tones[bar === 7 && index === rhythm.length - 1 ? 0 : (index + Math.floor(bar / 2)) % 3];
+      const candidates = Array.from({ length: 13 }, (_, i) => 72 + i).filter(pitch => pitch % 12 === tone);
+      const target = previous + (bar % 2 === 0 ? 2 : -2);
+      const pitch = candidates.reduce((best, value) => Math.abs(value - target) < Math.abs(best - target) ? value : best);
+      const end = rhythm[index + 1] ?? 4;
+      melody.push({ pitch, startBeat: bar * 4 + beat, durationBeats: end - beat - .08, velocity: bar >= 4 ? 92 : 84 });
+      previous = pitch;
+    });
+    [0, 2].forEach((beat, index) => bass.push({
+      pitch: 48 + (index === 0 || bar === 7 ? root : (root + 7) % 12),
+      startBeat: bar * 4 + beat, durationBeats: 1.8, velocity: index === 0 ? 78 : 68,
+    }));
+  });
+  const track: Track = {
+    ...createTrack(song), name: 'コード伴奏', instrument: 'piano', volume: .65,
+    layers: [
+      { id: 'generated-melody', name: 'メロディー', notes: melody, instrument: 'bell', volume: .85, muted: false, solo: false },
+      { id: 'generated-bass', name: 'ベース', notes: bass, instrument: 'electric', volume: .75, muted: false, solo: false },
+    ],
+  };
+  validateTrack(track);
+  return track;
+}
 export function replaceNote(track: Track, index: number, note?: Note): Track {
   const notes=track.notes.filter((_,i)=>i!==index);
   if(note) notes.splice(index<0?notes.length:index,0,{...note});

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { emotions, songForEmotions, type Emotion, chords, midiFor, sample, createTrack, regenerate, commit, undo, type EditorState, type Track, type Song, type Chord } from './music';
+import { emotions, songForEmotions, type Emotion, chords, midiFor, sample, createTrack, arrangeSong, regenerate, commit, undo, type EditorState, type Track, type Song, type Chord } from './music';
 import { parseImageAnalysis, parseAnalysisSong, imageAnalysisError, type ImageAnalysis } from './imageAnalysis';
 import { MidiEditorScreen } from './midi/MidiEditorScreen';
 import { Player, type PlaybackStatus } from './player';
@@ -13,7 +13,7 @@ function App() {
   const [screen,setScreen]=useState(()=>window.location.hash==='#/midi'?'midi':'home');
   const [photos,setPhotos]=useState<File[]>([]);
   const [previews,setPreviews]=useState<string[]>([]);
-  const [proposal,setProposal]=useState<{analysis:ImageAnalysis;song:Song}|null>(null);
+  const [proposal,setProposal]=useState<{analysis:ImageAnalysis;song:Track}|null>(null);
   const [analyzing,setAnalyzing]=useState(false);
   const [error,setError]=useState('');
   const [playbackStatus,setPlaybackStatus]=useState<PlaybackStatus>('ready');
@@ -59,7 +59,7 @@ function App() {
       if(!result||typeof result!=='object'||!('analysis' in result)||!('song' in result))throw new Error('写真分析APIの応答形式が不正です。再試行してください。');
       const analysis=parseImageAnalysis(result.analysis), generatedSong=parseAnalysisSong(result.song);
       if(!analysis||!generatedSong)throw new Error('写真分析の結果が音楽の入力条件を満たしていません。別の写真で試すか、再試行してください。');
-      if(sequence===generationRef.current)setProposal({analysis,song:generatedSong});
+      if(sequence===generationRef.current)setProposal({analysis,song:arrangeSong(generatedSong)});
     }catch(error){if(!controller.signal.aborted&&sequence===generationRef.current)setError(error instanceof TypeError?'写真分析サーバーへ接続できませんでした。接続と起動状態を確認してください。':error instanceof Error?error.message:'写真を分析できませんでした。再試行してください。');}
     finally{if(sequence===generationRef.current){requestRef.current=null;setAnalyzing(false);}}
   }
@@ -79,7 +79,7 @@ function App() {
   {previews.length>1&&<div className="photo-previews">{previews.slice(1).map((url,i)=><img key={url} src={url} alt={`${i+2}枚目の写真`}/>)}</div>}
   <p className="privacy">「写真から提案する」を押すと、選んだ写真をサーバー経由でOpenAIへ送信します。アプリには写真を保存しません。OpenAI側の取扱いは<a href="https://developers.openai.com/api/docs/guides/your-data" target="_blank" rel="noreferrer">データ管理の説明</a>をご確認ください。</p>
   <button className="secondary full" disabled={!photos.length||analyzing} onClick={analyzePhotos}>{analyzing?'写真を分析中…':'写真から提案する'}</button>
-  {proposal&&<div className="sample"><span className="pill">写真からの提案</span><p>{proposal.analysis.moods.join('・')}<br/>{proposal.analysis.description}</p><p>{proposal.song.bars.join(' | ')}<br/>{proposal.song.bpm} BPM / {proposal.song.pattern==='block'?'ブロックコード':'分散和音'}</p><button className="secondary full" onClick={()=>edit({...createTrack(proposal.song),instrument:'piano'})}>この提案を適用する</button><small>現在の曲を置き換えます。元に戻せます。</small></div>}
+  {proposal&&<div className="sample"><span className="pill">写真からの提案</span><p>{proposal.analysis.moods.join('・')}<br/>{proposal.analysis.description}</p><p>{proposal.song.bars.join(' | ')}<br/>{proposal.song.bpm} BPM / {proposal.song.pattern==='block'?'ブロックコード':'分散和音'}</p><button className="secondary full" onClick={()=>edit(proposal.song)}>生成した音楽を適用する</button><p>メロディー・コード伴奏・ベースの3トラックを生成しました。適用後に「再生する」で聴けます。</p><small>AIの設定からアプリが音符を自動作曲します。現在の全トラックを置き換えます。元に戻せます。</small></div>}
   <div className="emotion-generator"><h3>感情を選んで伴奏を生成</h3><p id="emotion-help">複数選択できます。選んだ感情のテンポと伴奏パターンを混ぜ、コード進行を交互に組み合わせます。</p><fieldset aria-describedby="emotion-help"><legend>音楽に込める感情</legend>{emotions.map(emotion=><label key={emotion}><input type="checkbox" checked={selectedEmotions.includes(emotion)} onChange={()=>{setSelectedEmotions(current=>current.includes(emotion)?current.filter(value=>value!==emotion):[...current,emotion]);setPending(undefined);}}/>{emotion}</label>)}</fieldset><button className="secondary full" disabled={!selectedEmotions.length} onClick={()=>{try{const settings=songForEmotions(selectedEmotions);invalidate();stop();setError('');setPending({settings,emotions:settings.emotions});}catch(error){setError(error instanceof Error?error.message:'感情から生成できませんでした。');}}}>選んだ感情で生成する</button><p>ローカルのプリセットによる生成です。写真の分析・AI生成は行いません。写真なしでも使えます。</p></div>
   <div className="sample"><span className="pill">固定サンプル</span><h3>晴れた日の思い出</h3><p>最初は固定サンプルです。写真からの提案は別途実行してください。</p><button className="secondary full" onClick={()=>edit({...createTrack(sample),instrument:'piano'})}>サンプルを読み直す ↗</button><small>編集中の曲を置き換えます。元に戻せます。</small></div>
   </aside><section className="editor"><div className="section-top"><h2><small>02</small> 伴奏を編集</h2><span>8 BARS / 4 BEATS</span></div><div className="song-title"><div><p className="eyebrow">{song.emotions?.length?'感情からローカル生成':'YOUR TRACK'}</p><h2>{song.emotions?.join('・')||'現在の伴奏'} <span>↗</span></h2></div></div>
