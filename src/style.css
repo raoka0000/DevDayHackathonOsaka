@@ -3,3 +3,5 @@
 .workspace>*{min-width:0}
 
 .regenerate{background:#fff3d8;padding:16px;border-radius:8px;font-size:12px;line-height:1.8;margin-bottom:18px}
+
+.photo-previews{display:flex;gap:6px;overflow-x:auto;margin-top:8px}.photo-previews img{width:50px;height:50px;object-fit:cover;border-radius:6px;flex:none}
