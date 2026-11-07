@@ -32,7 +32,77 @@ function App() {
   function request(settings:Song,bar?:number){stop();setPending({settings,bar});}
   function confirm(){if(!pending)return;try{edit(regenerate(song,pending.settings,pending.bar));setPending(undefined);setError('');}catch(e){setError((e as Error).message);}}
   async function play(){setError('');try{await player.current.play(song,setBeat);}catch{stop();setError('再生できませんでした。ブラウザの音声設定を確認して再試行してください。');}}
-  async function generate(){if(!photoFile||generating)return;setError('');setGenerated(null);const reqId=++generateIdRef.current;setGenerating(true);try{const fd=new FormData();fd.append('photo',photoFile);const res=await fetch('/api/songs',{method:'POST',body:fd});if(reqId!==generateIdRef.current)return;if(!res.ok){const err=await res.json().catch(()=>({error:'通信エラーが発生しました。'}));setError(err.error||'音楽の生成に失敗しました。');return;}const data=await res.json() as GeneratedMusic;setGenerated(data);}catch(e){if(reqId!==generateIdRef.current)return;setError('ネットワークエラーが発生しました。接続を確認して再試行してください。');}finally{if(reqId===generateIdRef.current)setGenerating(false);}}
+  async function generate(){
+    if(!photoFile||generating)return;
+    setError('');
+    setGenerated(null);
+    const reqId=++generateIdRef.current;
+    setGenerating(true);
+    
+    try{
+      // FormData作成と写真の添付
+      const fd=new FormData();
+      try{
+        fd.append('photo',photoFile);
+      }catch(formErr){
+        if(reqId!==generateIdRef.current)return;
+        setError('写真の読み込みに失敗しました。ファイルを再度選択してください。');
+        return;
+      }
+      
+      // API呼び出し
+      let res: Response;
+      try{
+        res=await fetch('/api/songs',{method:'POST',body:fd});
+      }catch(fetchErr){
+        if(reqId!==generateIdRef.current)return;
+        setError('ネットワークに接続できませんでした。接続を確認して再試行してください。');
+        return;
+      }
+      
+      if(reqId!==generateIdRef.current)return;
+      
+      // レスポンス処理
+      if(!res.ok){
+        let err:{error?:string};
+        try{
+          err=await res.json();
+        }catch{
+          err={error:res.status===502?'サーバーで音楽生成に失敗しました。写真を変更するか、しばらく待ってから再試行してください。':res.status===429?'アクセスが集中しています。1分ほど待ってから再試行してください。':'通信エラーが発生しました。'};
+        }
+        setError(err.error||'音楽の生成に失敗しました。再試行してください。');
+        return;
+      }
+      
+      // JSON解析
+      let data: GeneratedMusic;
+      try{
+        data=await res.json() as GeneratedMusic;
+      }catch{
+        if(reqId!==generateIdRef.current)return;
+        setError('サーバーからの応答が不正です。再試行してください。');
+        return;
+      }
+      
+      // 生成結果の検証
+      if(!data||typeof data.bpm!=='number'||!Array.isArray(data.bars)||data.bars.length!==8||
+         (data.pattern!=='block'&&data.pattern!=='arpeggio')||!Array.isArray(data.mood)||
+         typeof data.explanation!=='string'){
+        if(reqId!==generateIdRef.current)return;
+        setError('生成された音楽設定が不正です。再試行してください。');
+        return;
+      }
+      
+      if(reqId!==generateIdRef.current)return;
+      setGenerated(data);
+    }catch(e){
+      if(reqId!==generateIdRef.current)return;
+      console.error('Unexpected generation error:',e);
+      setError('予期しないエラーが発生しました。ページを再読み込みして再試行してください。');
+    }finally{
+      if(reqId===generateIdRef.current)setGenerating(false);
+    }
+  }
   function applyGenerated(){if(!generated)return;edit(createTrack({bpm:generated.bpm,bars:generated.bars as Chord[],pattern:generated.pattern}));setGenerated(null);}
   function download(){const bytes=midiFor(song);const url=URL.createObjectURL(new Blob([bytes as BlobPart],{type:'audio/midi'}));const link=document.createElement('a');link.href=url;link.download='photochord.mid';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   if(screen==='midi') return <MidiEditorScreen track={song} beat={beat} canUndo={history.length>0} onEdit={edit} onStart={stop} onPlay={play} onUndo={()=>{stop();setState(s=>undo(s));}} onDownload={download} error={error}/>;
@@ -40,7 +110,52 @@ function App() {
   <main><div className="intro"><div><p className="eyebrow">YOUR MEMORIES, YOUR MUSIC</p><h1>写真から、音楽を育てよう。</h1><p className="subtitle">思い出をきっかけに、コードを並べて。音を聴きながら、自分らしい8小節へ。</p></div><span className="step-label">01 写真　→　02 編集　→　03 書き出し</span></div>
   <div className="workspace"><aside><div className="section-top"><h2><small>01</small> 音楽のきっかけ</h2><span>PHOTO</span></div>
   <label className={'photo '+(photo?'has-photo':'')} htmlFor="photo">{photo?<img src={photo} alt="選択した写真のプレビュー"/>:<div className="photo-art"><span className="sun"/><span className="hill back"/><span className="hill"/><span className="photo-icon">＋</span></div>}<span className="photo-caption">{filename||'写真を1枚選ぶ'}<small>JPEG / PNG / WebP・10MBまで</small></span></label>
-  <input id="photo" className="file" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>10*1024*1024){setError('JPEG・PNG・WebPの10MB以下の画像を選んでください。');e.target.value='';return;}URL.revokeObjectURL(photoRef.current);const url=URL.createObjectURL(f);photoRef.current=url;setPhoto(url);setPhotoFile(f);setFilename(f.name);setGenerated(null);setError('');}}/>
+  <input id="photo" className="file" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{
+    const f=e.target.files?.[0];
+    if(!f)return;
+    
+    // ファイル検証
+    const validTypes=['image/jpeg','image/png','image/webp'];
+    const maxSize=10*1024*1024; // 10MB
+    
+    if(!validTypes.includes(f.type)){
+      setError(`対応していないファイル形式です（${f.type}）。JPEG・PNG・WebPの画像を選んでください。`);
+      e.target.value='';
+      setPhotoFile(null);
+      return;
+    }
+    
+    if(f.size>maxSize){
+      setError(`ファイルサイズが大きすぎます（${(f.size/1024/1024).toFixed(1)}MB）。10MB以下の画像を選んでください。`);
+      e.target.value='';
+      setPhotoFile(null);
+      return;
+    }
+    
+    if(f.size===0){
+      setError('ファイルが空です。有効な画像ファイルを選んでください。');
+      e.target.value='';
+      setPhotoFile(null);
+      return;
+    }
+    
+    // プレビュー作成
+    try{
+      URL.revokeObjectURL(photoRef.current);
+      const url=URL.createObjectURL(f);
+      photoRef.current=url;
+      setPhoto(url);
+      setPhotoFile(f);
+      setFilename(f.name);
+      setGenerated(null);
+      setError('');
+    }catch(err){
+      console.error('Photo preview error:',err);
+      setError('写真のプレビューに失敗しました。別の画像を選んでください。');
+      e.target.value='';
+      setPhotoFile(null);
+    }
+  }}/>
   {photo&&<div className="generate-section"><p className="disclosure"><strong>⚠ AI分析について：</strong>選択した写真をOpenAI社のサーバーに送信し、音楽設定の提案を生成します。写真は分析後に破棄され、永続保存されません。</p><button className="secondary full" onClick={generate} disabled={generating||!photoFile}>{generating?'⏳ 生成中...':'✧ 写真から音楽を生成する'}</button>{generating&&<small>通常30秒以内に完了します。ページを閉じないでください。</small>}</div>}
   {generated&&<div className="generated"><span className="pill">AI生成</span><h3>{generated.explanation}</h3><div className="tags">{generated.mood.map((m,i)=><span key={i}>{m}</span>)}</div><p>テンポ {generated.bpm} BPM・{generated.pattern==='arpeggio'?'分散和音':'ブロックコード'}・コード進行 {generated.bars.join(' → ')}</p><button className="secondary full" onClick={applyGenerated}>この設定で音楽を作る ↗</button><small>編集中の曲を置き換えます。元に戻せます。</small></div>}
   <div className="sample"><span className="pill">固定サンプル</span><h3>晴れた日の思い出</h3><div className="tags"><span>明るい</span><span>温かい</span><span>穏やか</span></div><p>やさしいCメジャーのコード進行。写真がない場合や試用時にお使いください。</p><button className="secondary full" onClick={()=>{edit(createTrack(sample));setGenerated(null);}}>サンプルを読み直す ↗</button><small>編集中の曲を置き換えます。元に戻せます。</small></div>
