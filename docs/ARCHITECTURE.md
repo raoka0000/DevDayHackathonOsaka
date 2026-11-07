@@ -2,7 +2,7 @@
 
 ## 現在の構成（実装済み）
 
-React + TypeScript + Viteによるブラウザアプリ。Cloudflare Workers Static Assetsでdistを配信する設定を持つ。公開は未実施で、API用Worker・AI接続・DBバインディングは存在しない。
+React + TypeScript + Viteによるブラウザアプリ。Cloudflare Workers Static Assetsでdistを配信する設定を持つ。公開は未実施。src/worker.tsが画像分析APIとStatic Assetsを配信し、外部AI接続をサーバー側で行う。DBバインディングは存在しない。
 写真はObject URLでプレビューし、利用者が分析を開始した場合にOpenAIへ送信する。曲・履歴・写真はメモリ内で保持し、再読み込みで失われる。
 
 ```mermaid
@@ -107,3 +107,5 @@ MIDI画面の位置指定はピアノロール内の拍目盛りに集約する�
 `music.ts` の `songForEmotions(unknown)` は6種類から重複なく1つ以上の選択を検証し、正規順序でプリセットを均等に組み合わせる。BPMは平均、パターンは多数決（同数は分散和音）、コードは感情ごとの進行を小節単位で交互に使い、最後は先頭の感情の終止に戻す。AI・画像分析・外部送信は使わない。
 
 Appは選択中の感情をドラフトとして保持し、生成内容の確認後に最初のトラックだけを再生成する。適用した感情はTrack.emotionsに保持しUndo・画面往復で維持する。これは生成元の情報であり、以後の手編集から感情を再推定しない。既存の音色・追加トラックを保持し、再生とMIDIは生成されたTrack.notesを共用する。
+
+ローカルの `npm run dev` は `scripts/dev.mjs` でViteとWranglerを同時管理し、`vite.config.js` の `/api/` プロキシで本番と同じWorkerへ接続する。秘密情報はWorkerの `.dev.vars` に置き、Viteのクライアント環境変数へ渡さない。

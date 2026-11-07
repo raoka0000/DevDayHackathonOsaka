@@ -67,6 +67,8 @@ npm ci
 npm run dev
 ```
 
+`npm run dev` は初回ビルド後、写真分析用Worker（内部ポート8788）とViteをまとめて起動します。画面用URLから写真分析も使えます。APIキーは `.dev.vars` の `OPENAI_API_KEY` に設定してください（[準備手順](docs/OPENAI_IMAGE_ANALYSIS.md)）。設定変更後は再起動します。キーなしでも固定サンプル・手動感情生成・編集は利用できます。8788が使用中なら既存の開発サーバーを停止してください。
+
 表示されたURL（通常 **http://localhost:5173**）をChrome / Edgeなどのブラウザで開きます。ポートが使用中ならViteが表示する別のURLを使ってください。停止はターミナルで **Ctrl+C**。次回からは `npm run dev` だけで起動できます（Windowsは `npm.cmd run dev`）。
 
 Windowsで「スクリプトの実行が無効」と表示される場合は、上記のように `npm` の代わりに **npm.cmd** を使ってください。実行ポリシーの変更やWSLは不要です。`node` が見つからない場合はNode.jsをインストールしてターミナルを開き直してください。macOSのnode_modulesをWindowsへコピーせず、それぞれの端末で `npm ci` を実行します。

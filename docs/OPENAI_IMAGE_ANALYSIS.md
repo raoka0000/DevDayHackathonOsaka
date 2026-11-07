@@ -31,4 +31,8 @@ node --env-file=.dev.vars scripts/check-openai-image.mjs "画像1.jpg" "画像2.
 
 この手動確認と将来のWorkerは、指定画像をOpenAI APIに送信する。アプリ側の永続保存は行わず、Responses APIには `store: false` を指定する。ただしOpenAIの不正利用監視などによる保持は別に適用されるため、保存ゼロとは説明しない。現在の条件・例外は [OpenAIのデータ管理](https://developers.openai.com/api/docs/guides/your-data) を参照する。
 
-公開時はキーを `npx wrangler secret put OPENAI_API_KEY` でWorkerの秘密情報に設定する（デプロイ先とアカウントの確認が必要）。このコマンドと公開手順は本環境では未実行。`npm run dev` のVite単独起動はWorker APIを起動しない。`npm run cf:dev` でWorkerと画面を起動する手順は未検証。画像の完全なデコード検証と外部からのリクエスト数を制限する仕組みは未実装。公開前に実環境と利用上限を確認する。
+公開時はキーを `npx wrangler secret put OPENAI_API_KEY` でWorkerの秘密情報に設定する（デプロイ先とアカウントの確認が必要）。このコマンドと公開手順は本環境では未実行。`npm run dev` は初回ビルド後にWorker（127.0.0.1:8788）とViteを一括起動し、画面用URL（通常 http://localhost:5173）の `/api/` をWorkerへ転送する。`.dev.vars` はWorkerのみが読み込み、変更時は再起動する。Viteから入力エラー400と未定義APIの404のJSON応答を確認済み。`npm run cf:dev` でWorkerと画面を起動し、表示されたURL（通常 http://localhost:8787）を開く。ローカル起動、秘密情報のバインド、画像なしPOSTが400のJSONを返すことを確認済み。実画像の分析成功は未確認。画像の完全なデコード検証と外部からのリクエスト数を制限する仕組みは未実装。公開前に実環境と利用上限を確認する。
+
+## 画面でエラーが出た場合
+
+画面はAPIのエラーコードに応じ、キー未設定・画像不正・容量超過・時間切れ・OpenAI側の失敗・応答形式不正を区別する。JSON以外の応答の場合はWorkerの起動とAPIルーティングを確認する案内を表示する。外部APIの生のエラー本文やキーは表示しない。`upstream` の場合は認証・課金／利用枠・モデルアクセス・通信のどれかまでは未確定であり、サーバー設定とOpenAIの利用状況を確認する。
