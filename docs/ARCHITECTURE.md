@@ -3,7 +3,7 @@
 ## 現在の構成（実装済み）
 
 React + TypeScript + Viteによるブラウザアプリ。Cloudflare Workers Static Assetsでdistを配信する設定を持つ。公開は未実施で、API用Worker・AI接続・DBバインディングは存在しない。
-写真はObject URLでプレビューし、外部へ送信しない。曲・履歴・写真はメモリ内で保持し、再読み込みで失われる。
+写真はObject URLでプレビューし、利用者が分析を開始した場合にOpenAIへ送信する。曲・履歴・写真はメモリ内で保持し、再読み込みで失われる。
 
 ```mermaid
 flowchart LR
@@ -89,3 +89,7 @@ AppのEditorStateは曲全体を保持する。MIDI画面内には選択IDだけ
 playbackPartsはミュートとソロを解決し、PlayerとMIDIが同じ対象Partを使う。Playerはすべての必要サンプルを読み込んだ後、単一AudioContextの同じ開始時刻に各Partを予約し、volumeをGainに反映する。全出力をDynamicsCompressorに通して重ね合わせのピークを抑える。編集・停止・読み込み世代の制御は従来どおり共通。
 
 複数PartのMIDIはFormat 1。テンポ/4拍子のconductorと、各再生対象Partの名前/Program Change/CC7音量/Note On-Offを別チャンクで出力する。チャンネルはPart配列の0〜7で、打楽器用CH10を避ける。全チャンク終端は15360tick（32拍、480PPQN）。同時刻はメタ情報・楽器指定・音量・Note Off・Note Onの順に並べる。単一トラックはFormat 0を維持し、全ミュート時もテンポ/拍子/終端を残す。音声処理のコンプレッサーや音源自体はMIDIに含まれない。
+
+## 画像分析の接続（実環境未検証）
+
+利用者が1〜5枚の写真を選び、送信内容を確認して分析を開始する。Workerの `POST /api/image-analysis` からOpenAIに送り、印象と `Song` の8小節・テンポ・パターンを検証して返す。画面では提案の明示的な適用時に `createTrack` で音符を生成し、既存の再生・MIDIとUndoに渡す。写真や編集中の曲の変更時は古い応答を無効化する。画像全体の破損検証と利用制限は未実装。APIと画面は実環境未検証。別の音楽生成担当との受け渡し形式は未合意。
