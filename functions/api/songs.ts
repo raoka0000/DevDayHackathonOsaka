@@ -105,9 +105,15 @@ function validateMusicSettings(data: unknown): {
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
 
-  // APIキーの確認
-  if (!env.OPENAI_API_KEY) {
-    console.error('OPENAI_API_KEY is not configured');
+  // APIキーの確認（空文字列と空白もチェック）
+  const apiKey = env.OPENAI_API_KEY;
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+    console.error('OPENAI_API_KEY binding missing, empty, or invalid type:', {
+      exists: !!apiKey,
+      type: typeof apiKey,
+      isEmpty: apiKey === '',
+      isWhitespace: typeof apiKey === 'string' && apiKey.trim().length === 0
+    });
     return new Response(
       JSON.stringify({ error: '音楽生成サービスが設定されていません。管理者にお問い合わせください。' }),
       { status: 503, headers: { 'Content-Type': 'application/json' } }
@@ -286,7 +292,7 @@ JSON objectのみ返してください。`
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(openaiPayload),
@@ -296,10 +302,34 @@ JSON objectのみ返してください。`
     clearTimeout(timeoutId);
 
     if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.error('OpenAI API error:', openaiResponse.status, errorText);
+      const status = openaiResponse.status;
+      let errorInfo: { code?: string; message?: string; type?: string } = {};
+      try {
+        const errorData = await openaiResponse.json();
+        if (errorData.error) {
+          errorInfo = {
+            code: errorData.error.code,
+            message: errorData.error.message?.substring(0, 100),
+            type: errorData.error.type
+          };
+        }
+      } catch (parseErr) {
+        // JSON parse failed, use text
+        const errorText = await openaiResponse.text();
+        errorInfo.message = errorText.substring(0, 100);
+      }
       
-      if (openaiResponse.status === 401) {
+      // Safe diagnostic logging (no secrets, no image data)
+      console.error('OpenAI API error:', {
+        status,
+        errorCode: errorInfo.code,
+        errorType: errorInfo.type,
+        requestId: openaiResponse.headers.get('x-request-id'),
+        // Log auth header format validation (NOT the key itself)
+        authHeaderValid: apiKey.startsWith('sk-') && apiKey.length > 20
+      });
+      
+      if (status === 401) {
         return new Response(
           JSON.stringify({ error: 'API認証に失敗しました。管理者にお問い合わせください。' }),
           { status: 503, headers: { 'Content-Type': 'application/json' } }
