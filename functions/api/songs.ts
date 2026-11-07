@@ -115,15 +115,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    // Origin検証（任意のCORS許可なし）
+    // Origin検証（完全一致の同一オリジンポリシー）
     const origin = request.headers.get('origin');
-    const referer = request.headers.get('referer');
     const url = new URL(request.url);
     
-    // 同一オリジンまたはリファラーチェック（本番では厳密化）
-    if (origin && !origin.includes(url.hostname)) {
-      // 開発時のlocalhostは許可
-      if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        const requestOrigin = `${originUrl.protocol}//${originUrl.host}`;
+        const expectedOrigin = `${url.protocol}//${url.host}`;
+        
+        // 完全一致チェック（localhost開発時のみ例外）
+        const isLocalhost = originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1';
+        if (requestOrigin !== expectedOrigin && !isLocalhost) {
+          console.error('Origin mismatch:', { origin: requestOrigin, expected: expectedOrigin });
+          return new Response(
+            JSON.stringify({ error: 'アクセスが拒否されました。' }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (e) {
+        console.error('Invalid origin header:', origin);
         return new Response(
           JSON.stringify({ error: 'アクセスが拒否されました。' }),
           { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -213,9 +225,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       );
     }
 
-    // 画像をbase64エンコード
+    // 画像をbase64エンコード（安全なチャンク処理）
     const arrayBuffer = await photoFile.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192; // 8KB chunks to avoid stack overflow
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64 = btoa(binary);
     const dataUrl = `data:${photoFile.type};base64,${base64}`;
 
     // OpenAI Vision API呼び出し
@@ -231,7 +250,23 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           content: [
             {
               type: 'text',
-              text: `この写真に合う音楽の設定を提案してください。${context_text ? `\n希望: ${context_text}` : ''}\n\n以下のJSON形式で返してください:\n{\n  "bpm": 60〜160の整数,\n  "bars": ["C", "G", "Am", "F", "C", "G", "F", "C"], // 8小節のコード進行（C, Cm, D, Dm, E, Em, F, Fm, G, Gm, A, Am, B, Bmから選択）\n  "pattern": "arpeggio" または "block",\n  "mood": ["明るい", "温かい", "穏やか"], // 1〜5個の短い印象タグ\n  "explanation": "この写真は..." // 200文字以内の提案理由\n}`
+              text: `この写真に合う音楽の設定をJSON形式で提案してください。${context_text ? `\n希望: ${context_text}` : ''}
+
+必須フィールド（すべて必須、JSON objectで返してください）:
+{
+  "bpm": <60から160の整数>,
+  "bars": [<8個のコード名文字列>],
+  "pattern": "<arpeggioまたはblock>",
+  "mood": [<1〜5個の短い印象タグ文字列>],
+  "explanation": "<200文字以内の提案理由>"
+}
+
+bars: 正確に8個のコード進行。使用可能なコード: C, Cm, D, Dm, E, Em, F, Fm, G, Gm, A, Am, B, Bm
+pattern: "arpeggio" (分散和音) または "block" (ブロック和音) のいずれか
+mood: 写真の印象を表す1〜5個の短いタグ（例: ["明るい", "温かい", "穏やか"]）
+explanation: 提案理由を200文字以内で
+
+JSON objectのみ返してください。`
             },
             {
               type: 'image_url',
