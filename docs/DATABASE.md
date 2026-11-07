@@ -54,7 +54,7 @@ CREATE INDEX anonymous_sessions_expiry_idx ON anonymous_sessions(expires_at);
 ```
 
 - IDはサーバーで生成するランダムなID。時刻はUTCのUnix秒で統一する。
-- song_jsonはARCHITECTURE.mdのSongを保存する。保存前にサーバーでスキーマ検証する。
+- song_jsonはARCHITECTURE.mdのTrack（生成設定と手編集済みnotes）を含む保存用データを保存する。ID・曲名・保存版番号を持つラッパー型は保存導入時に定義する。保存前にサーバーでスキーマ検証する。
 - title・revision・idは列とJSONが一致するようにサーバーで組み立てる。
 - schema_versionはデータ形式の版、revisionは保存済みの更新番号として分ける。
 - MVPでは編集履歴テーブルを作らない。Undo用の直前データはブラウザに置く。

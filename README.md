@@ -32,11 +32,13 @@
 ## 開発資料
 
 - [企画・受け入れ条件](docs/PRODUCT.md)
-- [構成案・データ契約](docs/ARCHITECTURE.md)
+- [アーキテクチャ・データ契約](docs/ARCHITECTURE.md)
 - [CloudflareのDB・保存設計](docs/DATABASE.md)
 - [3時間の実装タスク](docs/TASKS.md)
 - [ChatGPTへの開発依頼文](docs/CHATGPT_HANDOFF.md)
-- [開発エージェントへの指示](AGENTS.md)
+- [開発ルール](AGENTS.md)（[Claude用の入口](CLAUDE.md)）
+- [開発手順・完了条件](docs/DEVELOPMENT.md)
+- [本番設定・公開検証](docs/PRODUCTION.md)
 
 ## 現在の状態
 
@@ -86,10 +88,11 @@ Windowsで「スクリプトの実行が無効」と表示される場合は、�
 
 ```sh
 npm run typecheck
-npm test
 npm run build
 npm run preview
 ```
+
+今回のハッカソンでは自動テストの追加・実行は必須にしません。既存の `npm test` は保持します。型チェック・ビルドと変更した主要操作の確認を行います。
 
 `preview` はビルド済み画面の確認用です（通常 http://localhost:4173）。`dist/index.html` を直接開かず、HTTPサーバー経由で使ってください。
 
