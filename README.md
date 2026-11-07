@@ -136,12 +136,11 @@ npm run deploy
 依頼例：
 
 ```text
-$create-issues 未完了のMVPを優先順にイシュー化してください。まずローカル下書きとして保存してください。
-$create-issues 下書きを確認し、対象リポジトリのGitHubにイシューを作成してください。
+$create-issues 未完了のMVPを優先順にイシュー化してください。
 $develop-issue docs/issues/LOCAL-001.md を実装・検証してください。
 $develop-issue イシュー #12 を実装・検証してください。
 ```
 
-GitHubを使う場合は、対象リポジトリへのアクセスとイシュー読み書き権限が必要です。接続できない場合は `docs/issues/` に下書きを残します。下書きのLOCAL番号とGitHub番号は別です。起票後はURLまたはローカルパスを実装担当AIに渡してください。
+イシュー作成依頼は、既定で [raoka0000/DevDayHackathonOsaka](https://github.com/raoka0000/DevDayHackathonOsaka) への投稿まで行います。対象リポジトリへのアクセスとイシュー読み書き権限が必要です。投稿できない場合、または明示的に下書きのみを指定した場合は `docs/issues/` に下書きを残します。下書きのLOCAL番号とGitHub番号は別です。起票後はURLまたはローカルパスを実装担当AIに渡してください。
 
 スキルが候補に出ない場合は、新しいチャットでこのリポジトリを開くか、上記SKILL.mdのパスを指定して実行を依頼してください。この仕組みは依頼時にAIが進める手順です。常駐監視・自動起動のCIは未設定です。
