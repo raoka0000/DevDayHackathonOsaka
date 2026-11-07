@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { emotions, songForEmotions, type Emotion, chords, midiFor, sample, createTrack, regenerate, commit, undo, validateSong, type EditorState, type Track, type Song, type Chord } from './music';
-import { parseImageAnalysis, type ImageAnalysis } from './imageAnalysis';
+import { emotions, songForEmotions, type Emotion, chords, midiFor, sample, createTrack, regenerate, commit, undo, type EditorState, type Track, type Song, type Chord } from './music';
+import { parseImageAnalysis, parseAnalysisSong, imageAnalysisError, type ImageAnalysis } from './imageAnalysis';
 import { MidiEditorScreen } from './midi/MidiEditorScreen';
 import { Player, type PlaybackStatus } from './player';
 import './style.css';
@@ -52,11 +52,15 @@ function App() {
     const form=new FormData();photos.forEach(file=>form.append('images',file));
     try{
       const response=await fetch('/api/image-analysis',{method:'POST',body:form,signal:controller.signal});
-      if(!response.ok)throw new Error('analysis');
-      const result=await response.json();const analysis=parseImageAnalysis(result.analysis);
-      if(!analysis||!result.song||typeof result.song!=='object'||!Array.isArray(result.song.bars))throw new Error('invalid');
-      validateSong(result.song);if(sequence===generationRef.current)setProposal({analysis,song:result.song});
-    }catch{if(!controller.signal.aborted&&sequence===generationRef.current)setError('写真を分析できませんでした。画像や接続、APIの設定を確認して再試行してください。');}
+      if(!response.headers.get('content-type')?.toLowerCase().includes('application/json')) throw new Error('写真分析APIからJSONが返りませんでした。ローカルではnpm run devを再起動し、表示された画面用URLを開いてください。公開環境ではWorkerのAPIルーティングを確認してください。');
+      let result: unknown;
+      try { result=await response.json(); } catch { throw new Error('写真分析APIの応答を読み取れませんでした。再試行してください。'); }
+      if(!response.ok)throw new Error(imageAnalysisError(response.status,result));
+      if(!result||typeof result!=='object'||!('analysis' in result)||!('song' in result))throw new Error('写真分析APIの応答形式が不正です。再試行してください。');
+      const analysis=parseImageAnalysis(result.analysis), generatedSong=parseAnalysisSong(result.song);
+      if(!analysis||!generatedSong)throw new Error('写真分析の結果が音楽の入力条件を満たしていません。別の写真で試すか、再試行してください。');
+      if(sequence===generationRef.current)setProposal({analysis,song:generatedSong});
+    }catch(error){if(!controller.signal.aborted&&sequence===generationRef.current)setError(error instanceof TypeError?'写真分析サーバーへ接続できませんでした。接続と起動状態を確認してください。':error instanceof Error?error.message:'写真を分析できませんでした。再試行してください。');}
     finally{if(sequence===generationRef.current){requestRef.current=null;setAnalyzing(false);}}
   }
   function edit(next:Track){invalidate();stop();setPending(undefined);setState(s=>commit(s,next));}
