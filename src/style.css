@@ -9,3 +9,36 @@
 .timeline[role=slider]{cursor:ew-resize;height:14px;border:5px solid #f1f3eb;min-width:30px}.timeline[role=slider]>div{border-radius:3px}
 
 .emotion-generator{border-top:1px solid #e6e7dd;padding:20px 0}.emotion-generator p{font-size:11px;color:#7f8478;line-height:1.9}.emotion-generator fieldset{border:0;padding:0;margin:16px 0;display:flex;flex-wrap:wrap;gap:8px}.emotion-generator legend{font-size:11px;margin-bottom:10px}.emotion-generator label{display:flex;align-items:center;gap:5px;border:1px solid #dfe3d3;border-radius:16px;padding:7px 10px;font-size:11px;cursor:pointer}.emotion-generator label:has(input:checked){background:#e8eddb;border-color:#67895c}.emotion-generator input{accent-color:#355b45}.song-title>div{min-width:0}.song-title h2{overflow-wrap:anywhere}
+
+.photo-help{font-size:12px;color:#646c65;line-height:1.7}
+.photo-order{list-style:none;padding:0;display:grid;gap:10px}
+.photo-order li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:center}
+.photo-order img{width:64px;height:48px;object-fit:cover;border-radius:6px;grid-row:span 2}
+.photo-order span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.photo-order button{padding:4px 10px;margin-right:5px;border:1px solid #d9dfd6;border-radius:5px;background:#fff;cursor:pointer}
+.photo-order button:disabled{opacity:.35;cursor:default}
+.slideshow{margin:0 0 24px;background:#17231e;border-radius:16px;overflow:hidden;color:#fff}
+.slideshow>img{display:block;width:100%;height:clamp(260px,40vw,520px);object-fit:contain;background:#101713;animation:photo-appear .5s ease-out}
+.slideshow-caption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:18px 20px;font-size:13px}
+.slide-sections{display:flex;gap:4px;padding:0 20px}
+.slide-sections span{background:#34453c;text-align:center;padding:10px 2px;font-size:12px;border-radius:5px}
+.slide-sections span.active{background:#b5e6a4;color:#17231e}
+.slide-sections small{display:block;margin-top:5px;font-size:10px}
+.slideshow>p{font-size:11px;line-height:1.7;padding:0 20px 16px;color:#c5d3c9}
+@keyframes photo-appear{from{opacity:.35;transform:scale(1.025)}to{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.slideshow>img{animation:none}}
+.slideshow-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;font-size:12px}
+.slideshow-toolbar button,.slideshow-controls button{border:1px solid #62766a;background:#283c30;color:#fff;border-radius:8px;padding:10px 14px;white-space:nowrap}
+.slideshow-controls{display:flex;align-items:center;gap:12px;padding:16px 20px}
+.slideshow-controls button:first-child{background:#b5e6a4;color:#17231e;min-width:100px}
+.slideshow-seek{flex:1;min-width:60px;display:flex;align-items:center}
+.slideshow-seek input{width:100%;accent-color:#b5e6a4;cursor:pointer;height:28px}
+.slideshow-controls output{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.slideshow.slideshow-fullscreen,.slideshow:fullscreen{position:fixed;inset:0;width:100%;height:100%;height:100dvh;z-index:1000;margin:0;border-radius:0;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overscroll-behavior:contain}
+.slideshow.slideshow-fullscreen>img,.slideshow:fullscreen>img{flex:1;min-height:0;height:0;object-fit:contain;width:100%}
+.slideshow-fullscreen .slideshow-caption{padding:12px 20px}
+.slideshow-fullscreen>p{margin:0;padding-bottom:10px}
+.slideshow-fullscreen .slide-sections span{padding:6px 2px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:600px){.slideshow-controls{gap:8px;flex-wrap:wrap;padding:12px}.slideshow-seek{order:3;flex-basis:100%}.slideshow-controls output{margin-left:auto}.slideshow-toolbar{padding:10px 12px}.slideshow-fullscreen .slideshow-caption{padding:8px 12px;font-size:11px}.slideshow-fullscreen>p{display:none}}
+@media(max-height:500px){.slideshow-fullscreen .slide-sections,.slideshow-fullscreen>p{display:none}.slideshow-fullscreen .slideshow-caption,.slideshow-fullscreen .slideshow-controls,.slideshow-fullscreen .slideshow-toolbar{padding:6px 12px}}

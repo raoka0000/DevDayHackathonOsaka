@@ -3,7 +3,7 @@ export const chords = ['C', 'Cm', 'D', 'Dm', 'E', 'Em', 'F', 'Fm', 'G', 'Gm', 'A
 export type Chord = typeof chords[number];
 export type Song = { bpm: number; pattern: 'block' | 'arpeggio'; bars: Chord[] };
 export type Part = { id: string; name: string; notes: Note[]; instrument?: InstrumentId; volume: number; muted: boolean; solo: boolean };
-export type Track = Song & { notes: Note[]; instrument?: InstrumentId; name?: string; volume?: number; muted?: boolean; solo?: boolean; layers?: Part[]; emotions?: Emotion[] };
+export type Track = Song & { notes: Note[]; instrument?: InstrumentId; name?: string; volume?: number; muted?: boolean; solo?: boolean; layers?: Part[]; photoUrls?: string[]; emotions?: Emotion[] };
 export const MAX_PARTS = 8;
 export type Note = { pitch: number; startBeat: number; durationBeats: number; velocity: number };
 export const sample: Song = { bpm: 100, pattern: 'arpeggio', bars: ['C','G','Am','F','C','G','F','C'] };
@@ -32,6 +32,13 @@ export function songForEmotions(input: unknown): Song & { emotions: Emotion[] } 
   };
   validateSong(song);
   return song;
+}
+/** 写真を選択順に、小節の境界で8小節へ配分する。AIと画面で共用。 */
+export function photoSections(count: number): { photo: number; startBar: number; endBar: number }[] {
+  if (!Number.isInteger(count) || count < 1 || count > 5) throw new Error('写真は1〜5枚で指定してください。');
+  return Array.from({ length: count }, (_, photo) => ({
+    photo, startBar: Math.floor(photo * 8 / count), endBar: Math.floor((photo + 1) * 8 / count),
+  }));
 }
 export function validateSong(song: Song) {
   if (!Number.isInteger(song.bpm) || song.bpm < 60 || song.bpm > 160 || !['block','arpeggio'].includes(song.pattern) || song.bars.length !== 8 || song.bars.some(c => !chords.includes(c))) throw new Error('曲の設定が不正です。');
