@@ -8,6 +8,7 @@ test('再生は手編集音符を予約し、音声クロックに追従、再�
   currentTime=10;destination={};closed=false;events:{frequency:number;start:number;end:number;velocity:number}[]=[];
   constructor(){contexts.push(this);}
   async resume(){} async close(){this.closed=true;}
+  createDynamicsCompressor(){return {threshold:{value:0},knee:{value:0},ratio:{value:0},connect(){}};}
   createOscillator(){const event={frequency:0,start:0,end:0,velocity:0};this.events.push(event);return {type:'',frequency:{set value(v:number){event.frequency=v;}},connect(){},start(v:number){event.start=v;},stop(v:number){event.end=v;}};}
   createGain(){const event=this.events.at(-1)!;return {gain:{setValueAtTime(){},linearRampToValueAtTime(v:number){event.velocity=v;},exponentialRampToValueAtTime(){}},connect(){}};}
  }
