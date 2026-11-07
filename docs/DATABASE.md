@@ -28,7 +28,7 @@ KV・Durable Objects・Queuesは初期構成に加えない。共同編集や長
 
 永続保存を実装するときは、匿名セッションと曲の2テーブルから始める。
 Songの内容はJSONでまとめ、各小節・音符を個別テーブルに分割しない。
-アプリで再計算可能なNoteEventは保存しない。
+ピアノロール実装後は手編集した音符を再計算で復元できないため、Track.notesもSongのJSONに含めて保存する。保存機能自体は未実装。
 
 ```sql
 CREATE TABLE anonymous_sessions (

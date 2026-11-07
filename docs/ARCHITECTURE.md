@@ -86,3 +86,28 @@ AIキーはサーバーの秘密情報として扱う。タイムアウト・二
 - Cloudflareアカウント、デプロイ認証、利用プランの制限。
 
 実装開始時に公式資料で確認し、確定した選択と実行手順をREADMEに残す。
+
+## #1 実装済みの音符編集契約（2026-11-07）
+
+上記Song/APIは将来のAI接続用の設計案。現在の実装は `src/music.ts` の `Song = { bpm, pattern, bars }` と `Track = Song & { notes: Note[] }` を使います。Noteのフィールドは上記NoteEventと同じです。
+
+- `notesFor(Song)` は初期生成専用。`createTrack` で初期音符を保持し、その後は `Track.notes` を正本とします。
+- `playbackNotes` が設定・音符を検証し、Playerと `midiFor(Track)` に同じ音符を渡します。旧来の `midiFor(Song)` は固定設定の互換入口として生成音符を使います。
+- 音高は整数48〜84、開始拍は有限の0以上32未満、長さは有限の0.25以上で終端32以下、強さは整数1〜127。同音高の時間重複は拒否し、接する終端と次の開始は許可します。空配列は有効です。
+- UIの追加・移動は0.25拍刻み。リサイズだけ長さを量子化し、移動では元の長さを保持します。数値欄は生成済み0.45/3.8拍を保てる精度を許可します。
+- `replaceNote`、`regenerate` は元配列を変更せず、全体検証に成功してから返します。コード再生成は開始拍が対象小節に属する音符を置換し、パターン再生成は全音符を置換します。対象範囲を画面に提示して承認後に適用します。
+- `EditorState` は現在のTrackと最大30件のTrack履歴。`commit` は無変更では履歴を増やさず、`undo` は設定と音符を一括復元します。ドラッグ中は別のdraftに保持し、pointerupのみcommit、Escape/pointercancel/lostpointercaptureは破棄します。
+- Playerの位置はAudioContext.currentTimeから拍単位で計算します。新しい再生と停止は前のContextを閉じ、resume待ちの古い演奏は予約しません。
+
+API・永続保存は未実装です。将来の保存では手編集音符を省略せず、Track.notesも保存・検証する必要があります。
+
+実装時に確認した公式資料：[React useRef](https://react.dev/reference/react/useRef)、[Pointer capture](https://developer.mozilla.org/en-US/docs/Web/API/Element/setPointerCapture)、[AudioContextのクロック](https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/currentTime)。
+
+## MIDI編集画面の分離
+
+他担当者との変更競合を減らすため、MIDI編集は `#/midi` の独立した画面に分離した。写真・コード編集は `#/`（初期URLはハッシュなしでも可）。ルーターの追加依存やサーバー設定変更を必要としないハッシュ遷移を使う。
+
+- 今後のMIDI画面の詳細化は `src/midi/MidiEditorScreen.tsx`、`src/midi/PianoRoll.tsx`、`src/midi/midi.css` 内で進める。専用CSSのセレクターは `.midi-screen` 以下に限定する。
+- `MidiEditorScreenProps` が画面境界。Track・再生位置・Undo可否と、編集/停止/再生/Undo/出力のコールバックを受け取る。画面内で別の曲・履歴・Playerを作らない。
+- Appが曲・履歴・写真・Playerを保持するため、画面のアンマウントで編集内容は消えない。画面移動時は再生を止めて再生成確認を破棄する。音符選択など画面内の一時状態は戻った際に初期化する。
+- 写真/AI/音色の担当者は既存画面と共有サービスを担当し、MIDI画面担当者は専用ディレクトリを中心に変更する。Track・Player・MIDI出力の契約を変更する場合は双方で調整する。
