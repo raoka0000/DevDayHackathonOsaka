@@ -1,0 +1,48 @@
+{
+  "revision": "044fab8e1456bfafc5776e86dfd6bb8697149aef",
+  "downloadedOn": "2026-11-07",
+  "files": [
+    {
+      "file": "acoustic_grand_piano-mp3.js",
+      "url": "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/044fab8e1456bfafc5776e86dfd6bb8697149aef/FluidR3_GM/acoustic_grand_piano-mp3.js",
+      "bytes": 2631954,
+      "sha256": "00eebe0214c12ff8f32c47c2f7ac92ef352800e868ab0f883b80854486ac4ca6",
+      "samples": 88
+    },
+    {
+      "file": "acoustic_guitar_nylon-mp3.js",
+      "url": "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/044fab8e1456bfafc5776e86dfd6bb8697149aef/FluidR3_GM/acoustic_guitar_nylon-mp3.js",
+      "bytes": 1837439,
+      "sha256": "5375fa9e0408d960e12b6e4ec120c42bce824d80b18e982b27ddaece146a4f64",
+      "samples": 88
+    },
+    {
+      "file": "melodic_tom-mp3.js",
+      "url": "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/044fab8e1456bfafc5776e86dfd6bb8697149aef/FluidR3_GM/melodic_tom-mp3.js",
+      "bytes": 1702133,
+      "sha256": "34da43e3d7eb39f8c7e2a7d182a66a1af3c09eb9306623c7e317c20f524ddf23",
+      "samples": 88
+    },
+    {
+      "file": "string_ensemble_1-mp3.js",
+      "url": "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/044fab8e1456bfafc5776e86dfd6bb8697149aef/FluidR3_GM/string_ensemble_1-mp3.js",
+      "bytes": 2803855,
+      "sha256": "8571395f4c42a989a63e0aed48ad9d79f0ac1a822ff2afd7cb356191be8fd4a2",
+      "samples": 88
+    },
+    {
+      "file": "synth_drum-mp3.js",
+      "url": "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/044fab8e1456bfafc5776e86dfd6bb8697149aef/FluidR3_GM/synth_drum-mp3.js",
+      "bytes": 1686120,
+      "sha256": "d6adbb683801b6d4be062f95e1b8b4767f64317ecfcded5a09c80a9948c33a42",
+      "samples": 88
+    },
+    {
+      "file": "taiko_drum-mp3.js",
+      "url": "https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/044fab8e1456bfafc5776e86dfd6bb8697149aef/FluidR3_GM/taiko_drum-mp3.js",
+      "bytes": 1689156,
+      "sha256": "2f8ab37521871ec4d29bd4e745fc10806580bfb8101805495b8267593a89de7c",
+      "samples": 88
+    }
+  ]
+}

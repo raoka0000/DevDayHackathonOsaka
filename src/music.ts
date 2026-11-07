@@ -1,7 +1,8 @@
+import { instrumentFor, type InstrumentId } from './instruments';
 export const chords = ['C', 'Cm', 'D', 'Dm', 'E', 'Em', 'F', 'Fm', 'G', 'Gm', 'A', 'Am', 'B', 'Bm'] as const;
 export type Chord = typeof chords[number];
 export type Song = { bpm: number; pattern: 'block' | 'arpeggio'; bars: Chord[] };
-export type Track = Song & { notes: Note[] };
+export type Track = Song & { notes: Note[]; instrument?: InstrumentId };
 export type Note = { pitch: number; startBeat: number; durationBeats: number; velocity: number };
 export const sample: Song = { bpm: 100, pattern: 'arpeggio', bars: ['C','G','Am','F','C','G','F','C'] };
 export function validateSong(song: Song) {
@@ -29,7 +30,7 @@ export function validateNotes(notes: Note[]) {
     if(a.pitch===b.pitch && a.startBeat < b.startBeat+b.durationBeats && b.startBeat < a.startBeat+a.durationBeats) throw new Error('同じ音高の音符を重ねることはできません。');
   }
 }
-export function playbackNotes(track: Track): Note[] { validateSong(track); validateNotes(track.notes); return track.notes; }
+export function playbackNotes(track: Track): Note[] { validateSong(track); instrumentFor(track.instrument); validateNotes(track.notes); return track.notes; }
 export function createTrack(song: Song): Track { return {...structuredClone(song), notes: notesFor(song)}; }
 export function replaceNote(track: Track, index: number, note?: Note): Track {
   const notes=track.notes.filter((_,i)=>i!==index);
@@ -40,7 +41,7 @@ export function replaceNote(track: Track, index: number, note?: Note): Track {
 export function regenerate(track: Track, settings: Song, bar?: number): Track {
   const generated=notesFor(settings);
   const notes=bar===undefined?generated:[...track.notes.filter(n=>Math.floor(n.startBeat/4)!==bar),...generated.filter(n=>Math.floor(n.startBeat/4)===bar)];
-  validateNotes(notes); return {...settings,notes};
+  validateNotes(notes); return {...settings,notes,instrument:track.instrument};
 }
 export type EditorState = { current: Track; history: Track[] };
 export function commit(state: EditorState, next: Track): EditorState {
@@ -57,7 +58,7 @@ export function midiFor(song: Song | Track): Uint8Array {
     {tick:Math.round((n.startBeat+n.durationBeats)*480), data:[0x80,n.pitch,0]}
   ]).sort((a,b)=>a.tick-b.tick || a.data[0]-b.data[0]);
   const tempo=Math.round(60000000/song.bpm);
-  const track=[0,0xff,0x51,3,(tempo>>>16)&255,(tempo>>>8)&255,tempo&255,0,0xff,0x58,4,4,2,24,8,0,0xc0,0];
+  const track=[0,0xff,0x51,3,(tempo>>>16)&255,(tempo>>>8)&255,tempo&255,0,0xff,0x58,4,4,2,24,8,0,0xc0,instrumentFor('notes' in song ? song.instrument : undefined).program];
   let previous=0;
   for(const event of events) { track.push(...vlq(event.tick-previous),...event.data); previous=event.tick; }
   track.push(...vlq(32*480-previous),0xff,0x2f,0);

@@ -25,7 +25,7 @@ flowchart LR
 
 ## 曲データと更新の契約
 
-型・対応値の正本はsrc/music.ts。Songはbpm・pattern・barsからなる生成設定、TrackはSongにnotesを加えた編集可能な曲、Noteはpitch・startBeat・durationBeats・velocityを持つ。現在は曲ID・revision・曲名・キー・AIの理由を型に持たない。
+型・対応値の正本はsrc/music.ts。Songはbpm・pattern・barsからなる生成設定、TrackはSongにnotesと任意のinstrument（音色ID）を加えた編集可能な曲、Noteはpitch・startBeat・durationBeats・velocityを持つ。現在は曲ID・revision・曲名・キー・AIの理由を型に持たない。
 
 - notesFor(Song)は音符生成、createTrackは初期曲の生成に使う。その後はTrack.notesを正本にし、再生のたびに設定から計算し直さない。
 - playbackNotesが曲設定と音符を検証し、PlayerとmidiFor(Track)が同じ音符を使う。midiFor(Song)は設定から生成する既存入口であり、編集画面はTrackを渡す。
@@ -37,7 +37,7 @@ flowchart LR
 
 ## 再生と出力
 
-PlayerはWeb AudioのOscillatorとGainによる合成音を使い、外部の音源・音楽ライブラリには依存しない。位置表示はAudioContext.currentTimeを基準に計算する。開始はユーザー操作に限定し、停止・再再生・編集・画面遷移で前のContextを閉じる。resume待ちの古い演奏も予約しない。
+Playerはinstruments.tsの設定に応じてWeb AudioのBufferSource（サンプル音源）またはOscillatorとGain（内蔵シンセ）を使う。音色IDの未指定時は内蔵エレクトリックピアノ。外部の音楽ライブラリには依存しない。位置表示はAudioContext.currentTimeを基準に計算する。開始はユーザー操作に限定し、停止・再再生・編集・画面遷移で前のContextを閉じる。resume待ちの古い演奏も予約しない。
 
 MIDIはmusic.ts内でエンコードする。音符・テンポ・拍子・曲終端を含め、同時刻はNote Offを先に並べる。ファイルの出力成功と外部DAWでの読み込み確認は別の検証として扱う。
 
@@ -69,3 +69,13 @@ AI編集では現在の曲と候補を別に保持する。曲の編集版番号
 永続保存の追加は[DATABASE.md](DATABASE.md)に従う。保存する音楽データは生成設定だけでなく手編集後のTrack.notesを含む。ローカルの編集版番号、DBの更新revision、保存形式のschema_versionは役割を分ける。D1・R2の追加をMVP完成の前提にしない。
 
 将来案の採用時には、契約・実装・設定を揃え、資料の更新は最小限とする。
+
+## 音色の契約
+
+`src/instruments.ts` は音色ID・表示・GMプログラム・サンプルのファイル名またはシンセの波形/エンベロープ設定を持つ。6種類のFluidR3サンプルと5種類のアプリ独自シンセを提供する。素材の版・ライセンスはpublic/soundfonts/FluidR3_GMを参照。画面に作者・出典・ライセンスへの案内を表示する。
+
+`src/soundfont.ts` は同一オリジンのMIDI.jsバンクからJSONオブジェクトだけを抽出し、末尾カンマを処理して検証する。スクリプトは実行しない。バンクの取得と音高ごとのAudioBufferをキャッシュし、必要な音色/音高だけ読み込む。失敗したPromiseはキャッシュから除外し再試行を許可する。公開には素材も含むdist全体が必要。
+
+音色IDはTrackの一部としてcommit/undoの対象にする。音符編集・コード/パターン再生成・テンポ編集で維持し、サンプル再読込のみ既定に戻す。音色切替時は通常の編集停止を通す。Playerはresume後・音源ロード後にContextの一致を検証し、古い処理の成功・失敗で新しい演奏を開始/停止しない。Appがready/loadingを受け取り、停止でloadingも解除する。
+
+MIDIには同プリセットのprogramを出力する。GM表示は1始まり、エンコードは0始まり。合成音には代替の楽器指定を使い、サンプル/合成音とも出力先の音源で響きは変わる。[GMの楽器指定](https://midi.org/general-midi-level-1)、[MEIのProgram対応表](https://music-encoding.org/guidelines/dev/mei-cmn/data-types/data.MIDINAMES.html) を参照。音源の追加時はカタログ・素材・出典表記を揃える。型だけ追加してファイルを省略しない。
