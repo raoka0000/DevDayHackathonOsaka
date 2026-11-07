@@ -5,11 +5,11 @@ const rowHeight = 22;
 const name = (pitch: number) => `${['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][pitch % 12]}${Math.floor(pitch / 12) - 1}`;
 type Drag = { index: number; x: number; y: number; original: Note; draft: Note; resize: boolean };
 type Props = {
-  track: Track; beat: number; onEdit: (track: Track) => void; onStart: () => void;
+  track: Track; beat: number; onEdit: (track: Track) => void; onStart: () => void; onSeek: (beat: number) => void;
   beatWidth: number; snap: number; tool: 'draw' | 'erase';
 };
 
-export function PianoRoll({ track, beat, onEdit, onStart, beatWidth, snap, tool }: Props) {
+export function PianoRoll({ track, beat, onEdit, onStart, onSeek, beatWidth, snap, tool }: Props) {
   const [selected, setSelected] = useState(-1);
   const [draft, setDraft] = useState<Note>();
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ export function PianoRoll({ track, beat, onEdit, onStart, beatWidth, snap, tool 
   return <section className="piano" aria-label="ピアノロール">
     <div className="piano-scroll" ref={scroll} aria-label="8小節のピアノロール">
       <div className="piano-content" style={{ width: width + 60 }}>
-        <div className="ruler">{Array.from({ length: 32 }, (_, i) => <span key={i} className={i % 4 === 0 ? 'bar-line' : ''} style={{ left: 60 + i * beatWidth, width: beatWidth }}>{Math.floor(i / 4) + 1}.{i % 4 + 1}</span>)}</div>
+        <div className="ruler">{Array.from({ length: 32 }, (_, i) => <button type="button" aria-label={`${Math.floor(i/4)+1}小節目${i%4+1}拍へ移動`} onClick={()=>onSeek(i)} key={i} className={i % 4 === 0 ? 'bar-line' : ''} style={{ left: 60 + i * beatWidth, width: beatWidth }}>{Math.floor(i / 4) + 1}.{i % 4 + 1}</button>)}</div>
         <div className="pitch-labels">{Array.from({ length: 37 }, (_, i) => <div className={(name(84-i).includes('♯') ? 'black-key' : 'white-key') + ((84-i)%12===0?' octave-key':'')} key={i}>{name(84 - i)}</div>)}</div>
         <div className={'note-grid '+(tool==='erase'?'erase-mode':'')} style={{ width, backgroundSize: `${beatWidth*4}px 100%, ${beatWidth}px 100%, ${beatWidth*snap}px 100%, 100% ${rowHeight}px` }} onClick={event => {
           if (event.target !== event.currentTarget || tool === 'erase') return;
