@@ -25,7 +25,7 @@ flowchart LR
 
 ## 曲データと更新の契約
 
-型・対応値の正本はsrc/music.ts。Songはbpm・pattern・barsからなる生成設定、TrackはSongにnotesと任意のinstrument（音色ID）を加えた編集可能な曲、Noteはpitch・startBeat・durationBeats・velocityを持つ。現在は曲ID・revision・曲名・キー・AIの理由を型に持たない。
+型・対応値の正本はsrc/music.ts。Songはbpm・pattern・barsからなる生成設定、TrackはSongにnotesと任意のinstrument（音色ID）・ミキサー設定・layersを加えた編集可能な曲、Noteはpitch・startBeat・durationBeats・velocityを持つ。現在は曲ID・revision・曲名・キー・AIの理由を型に持たない。
 
 - notesFor(Song)は音符生成、createTrackは初期曲の生成に使う。その後はTrack.notesを正本にし、再生のたびに設定から計算し直さない。
 - playbackNotesが曲設定と音符を検証し、PlayerとmidiFor(Track)が同じ音符を使う。midiFor(Song)は設定から生成する既存入口であり、編集画面はTrackを渡す。
@@ -79,3 +79,13 @@ AI編集では現在の曲と候補を別に保持する。曲の編集版番号
 音色IDはTrackの一部としてcommit/undoの対象にする。音符編集・コード/パターン再生成・テンポ編集で維持し、サンプル再読込のみ既定に戻す。音色切替時は通常の編集停止を通す。Playerはresume後・音源ロード後にContextの一致を検証し、古い処理の成功・失敗で新しい演奏を開始/停止しない。Appがready/loadingを受け取り、停止でloadingも解除する。
 
 MIDIには同プリセットのprogramを出力する。GM表示は1始まり、エンコードは0始まり。合成音には代替の楽器指定を使い、サンプル/合成音とも出力先の音源で響きは変わる。[GMの楽器指定](https://midi.org/general-midi-level-1)、[MEIのProgram対応表](https://music-encoding.org/guidelines/dev/mei-cmn/data-types/data.MIDINAMES.html) を参照。音源の追加時はカタログ・素材・出典表記を揃える。型だけ追加してファイルを省略しない。
+
+## 複数トラック
+
+既存画面の生成・コード編集契約を維持するため、Track.notes/instrumentは最初のトラック（ID main）、Track.layersは追加のPart配列とする。Partは安定したID・名前・notes・instrument・volume（0〜1）・muted・soloを持つ。partsForで同じ形に正規化し、最大8トラック・ID重複・各音符/音量/音色をvalidateTrackで検証する。同音高の重複拒否は各トラック内で行い、トラックをまたぐ重なりは許可する。
+
+AppのEditorStateは曲全体を保持する。MIDI画面内には選択IDだけを持ち、updatePart/addPart/removePartの結果をAppへcommitする。トラック削除/Undoで選択先がなくなった場合はmainに戻す。再生成はmainのみ、追加Partは保持し、サンプル再読込は全曲を初期化する。
+
+playbackPartsはミュートとソロを解決し、PlayerとMIDIが同じ対象Partを使う。Playerはすべての必要サンプルを読み込んだ後、単一AudioContextの同じ開始時刻に各Partを予約し、volumeをGainに反映する。全出力をDynamicsCompressorに通して重ね合わせのピークを抑える。編集・停止・読み込み世代の制御は従来どおり共通。
+
+複数PartのMIDIはFormat 1。テンポ/4拍子のconductorと、各再生対象Partの名前/Program Change/CC7音量/Note On-Offを別チャンクで出力する。チャンネルはPart配列の0〜7で、打楽器用CH10を避ける。全チャンク終端は15360tick（32拍、480PPQN）。同時刻はメタ情報・楽器指定・音量・Note Off・Note Onの順に並べる。単一トラックはFormat 0を維持し、全ミュート時もテンポ/拍子/終端を残す。音声処理のコンプレッサーや音源自体はMIDIに含まれない。
