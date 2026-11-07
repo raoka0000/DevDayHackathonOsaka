@@ -1,3 +1,4 @@
+import { setTempo } from '../music';
 import { useEffect, useState } from 'react';
 import { partsFor, addPart, updatePart, removePart, MAX_PARTS, type Track, type Part } from '../music';
 import { instrumentFor, instruments } from '../instruments';
@@ -68,7 +69,7 @@ export function MidiEditorScreen({
     <section className="studio-transport" aria-label="再生コントロール">
       <div className="transport-buttons"><button aria-label="最初から再生" onClick={onRestart}>↺</button><button aria-label="停止" onClick={onStart}>■</button><button className={'studio-play '+(playing?'is-playing':'')} onClick={transport}>{loading?'■ 読み込み中':playing?'Ⅱ 一時停止':'▶ 再生'}</button></div>
       <div className="position-display"><strong>{String(bar+1).padStart(3,'0')}<em>:</em>{String(Math.floor(position%4)+1).padStart(2,'0')}<em>:</em>{String(Math.floor(position%1*960)).padStart(3,'0')}</strong><small>小節 : 拍 : TICK</small></div>
-      <label className="tempo-control"><input aria-label="テンポ BPM" type="number" min="60" max="160" step="1" key={track.bpm} defaultValue={track.bpm} onFocus={onStart} onBlur={e=>{const bpm=Number(e.target.value);if(Number.isInteger(bpm)&&bpm>=60&&bpm<=160){onEdit({...track,bpm});setTempoError('');}else{e.target.value=String(track.bpm);setTempoError('テンポは60〜160の整数で指定してください。');}}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><small>BPM · 60–160</small></label>
+      <label className="tempo-control"><input aria-label="テンポ BPM" type="number" min="60" max="160" step="1" key={track.bpm} defaultValue={track.bpm} onFocus={onStart} onBlur={e=>{const bpm=Number(e.target.value);if(Number.isInteger(bpm)&&bpm>=60&&bpm<=160){onEdit(setTempo(track,bpm));setTempoError('');}else{e.target.value=String(track.bpm);setTempoError('テンポは60〜160の整数で指定してください。');}}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><small>BPM · 全写真共通</small></label>
       <div className="meter-display"><strong>4 / 4</strong><small>拍子</small></div>
       <div className="transport-end"><span className="engine-status" role="status"><i/> {loading?'音源を読み込み中…':'file' in instrument?'サンプル音源・使用可能':'内蔵シンセ・使用可能'}</span><button className="studio-button" disabled={!canUndo} onClick={onUndo}>↶ 元に戻す</button></div>
     </section>

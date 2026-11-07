@@ -4,7 +4,7 @@ LOCAL-002は作業中。アプリ画面とWorkerの分析APIを接続したが�
 
 ## モデルと費用
 
-画像入力と構造化出力に対応する [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) を使用する。2026-11-07時点の公式掲載価格はテキスト入力100万トークンあたり$0.10、出力100万トークンあたり$0.50。画像も入力トークンとして課金され、画像の枚数・設定・出力の量により費用は変わる。[画像入力の料金と解像度](https://developers.openai.com/api/docs/guides/images-vision) と [最新料金](https://developers.openai.com/api/docs/pricing) を実行前に確認する。`detail: low`、出力上限512トークン、複数画像を1回の呼び出しにまとめる。アカウントでのモデル利用可否は実際に確認する必要がある。
+画像入力と構造化出力に対応する [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) を使用する。2026-11-07時点の公式掲載価格はテキスト入力100万トークンあたり$0.10、出力100万トークンあたり$0.50。画像も入力トークンとして課金され、画像の枚数・設定・出力の量により費用は変わる。[画像入力の料金と解像度](https://developers.openai.com/api/docs/guides/images-vision) と [最新料金](https://developers.openai.com/api/docs/pricing) を実行前に確認する。`detail: low`、出力上限1536トークン、複数画像を1回の呼び出しにまとめる。アカウントでのモデル利用可否は実際に確認する必要がある。
 
 ## 事前準備
 
@@ -36,3 +36,5 @@ node --env-file=.dev.vars scripts/check-openai-image.mjs "画像1.jpg" "画像2.
 ## 画面でエラーが出た場合
 
 画面はAPIのエラーコードに応じ、キー未設定・画像不正・容量超過・時間切れ・OpenAI側の失敗・応答形式不正を区別する。JSON以外の応答の場合はWorkerの起動とAPIルーティングを確認する案内を表示する。外部APIの生のエラー本文やキーは表示しない。`upstream` の場合は認証・課金／利用枠・モデルアクセス・通信のどれかまでは未確定であり、サーバー設定とOpenAIの利用状況を確認する。
+
+写真別の音楽設定は `song.sections` で受け渡す。各写真の開始小節・BPM・伴奏パターン・3パートの音色IDを必須とし、写真の割当との一致を検証する。構造化出力のスキーマは[公式資料](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses)に従い、各オブジェクトの全項目をrequiredとしadditionalPropertiesをfalseにする。実AIの新しい応答は未確認。

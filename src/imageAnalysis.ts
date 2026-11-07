@@ -1,3 +1,4 @@
+import { instruments } from './instruments';
 import { chords, validateSong, type Chord, type Song } from './music';
 
 /** 画像分析と音楽生成の間で使う暫定契約。Songは含めない。 */
@@ -34,6 +35,18 @@ export function parseAnalysisSong(value: unknown): Song | null {
   const validBars = bars.filter((bar: unknown): bar is Chord => chords.some(chord => chord === bar));
   if (validBars.length !== bars.length) return null;
   const song: Song = { bpm, pattern, bars: validBars };
+  if ('sections' in value) {
+    if (!Array.isArray(value.sections)) return null;
+    song.sections = [];
+    for (const section of value.sections) {
+      if (!section || typeof section !== 'object' || !('startBar' in section) || !('bpm' in section) || !('pattern' in section) || !('accompaniment' in section) || !('melody' in section) || !('bass' in section)) return null;
+      const accompaniment = instruments.find(item => item.id === section.accompaniment)?.id;
+      const melody = instruments.find(item => item.id === section.melody)?.id;
+      const bass = instruments.find(item => item.id === section.bass)?.id;
+      if (typeof section.startBar !== 'number' || typeof section.bpm !== 'number' || (section.pattern !== 'block' && section.pattern !== 'arpeggio') || !accompaniment || !melody || !bass) return null;
+      song.sections.push({startBar:section.startBar,bpm:section.bpm,pattern:section.pattern,accompaniment,melody,bass});
+    }
+  }
   try { validateSong(song); return song; } catch { return null; }
 }
 

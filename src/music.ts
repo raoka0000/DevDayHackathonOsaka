@@ -1,7 +1,8 @@
 import { instrumentFor, type InstrumentId } from './instruments';
 export const chords = ['C', 'Cm', 'D', 'Dm', 'E', 'Em', 'F', 'Fm', 'G', 'Gm', 'A', 'Am', 'B', 'Bm'] as const;
 export type Chord = typeof chords[number];
-export type Song = { bpm: number; pattern: 'block' | 'arpeggio'; bars: Chord[] };
+export type PhotoMusic = { startBar: number; bpm: number; pattern: 'block' | 'arpeggio'; accompaniment: InstrumentId; melody: InstrumentId; bass: InstrumentId };
+export type Song = { bpm: number; pattern: 'block' | 'arpeggio'; bars: Chord[]; sections?: PhotoMusic[] };
 export type Part = { id: string; name: string; notes: Note[]; instrument?: InstrumentId; volume: number; muted: boolean; solo: boolean };
 export type Track = Song & { notes: Note[]; instrument?: InstrumentId; name?: string; volume?: number; muted?: boolean; solo?: boolean; layers?: Part[]; photoUrls?: string[]; emotions?: Emotion[] };
 export const MAX_PARTS = 8;
@@ -40,7 +41,34 @@ export function photoSections(count: number): { photo: number; startBar: number;
     photo, startBar: Math.floor(photo * 8 / count), endBar: Math.floor((photo + 1) * 8 / count),
   }));
 }
+export function sectionAt(song: Song, beat: number) { return song.sections?.filter(section => section.startBar * 4 <= beat).at(-1); }
+export function secondsAt(song: Song, beat: number): number {
+  let seconds = 0;
+  for (let bar = 0; bar < 8; bar++) seconds += Math.max(0, Math.min(4, beat - bar * 4)) * 60 / (sectionAt(song, bar * 4)?.bpm ?? song.bpm);
+  return seconds;
+}
+export function beatAtSeconds(song: Song, seconds: number): number {
+  let remaining = Math.max(0, seconds);
+  for (let bar = 0; bar < 8; bar++) {
+    const duration = 240 / (sectionAt(song, bar * 4)?.bpm ?? song.bpm);
+    if (remaining < duration) return bar * 4 + remaining / duration * 4;
+    remaining -= duration;
+  }
+  return 32;
+}
+export function instrumentAt(song: Song, part: Part, beat: number) {
+  const section = sectionAt(song, beat);
+  return section ? part.id === 'main' ? section.accompaniment : part.id === 'generated-melody' ? section.melody : part.id === 'generated-bass' ? section.bass : part.instrument : part.instrument;
+}
 export function validateSong(song: Song) {
+  if (song.sections !== undefined) {
+    if (!Array.isArray(song.sections) || song.sections.length < 1 || song.sections.length > 5) throw new Error('写真ごとの音楽設定が不正です。');
+    const sections = song.sections;
+    sections.forEach((section, index) => {
+      if (!Number.isInteger(section.startBar) || section.startBar < 0 || section.startBar > 7 || (index === 0 ? section.startBar !== 0 : section.startBar <= sections[index - 1].startBar) || !Number.isInteger(section.bpm) || section.bpm < 60 || section.bpm > 160 || !['block', 'arpeggio'].includes(section.pattern)) throw new Error('写真ごとの音楽設定が不正です。');
+      instrumentFor(section.accompaniment); instrumentFor(section.melody); instrumentFor(section.bass);
+    });
+  }
   if (!Number.isInteger(song.bpm) || song.bpm < 60 || song.bpm > 160 || !['block','arpeggio'].includes(song.pattern) || song.bars.length !== 8 || song.bars.some(c => !chords.includes(c))) throw new Error('曲の設定が不正です。');
 }
 export function notesFor(song: Song): Note[] {
@@ -49,7 +77,7 @@ export function notesFor(song: Song): Note[] {
   return song.bars.flatMap((chord, bar) => {
     const root = roots[chord[0]];
     const pitches = [root, root + (chord.endsWith('m') ? 3 : 4), root + 7];
-    return song.pattern === 'block'
+    return (sectionAt(song, bar * 4)?.pattern ?? song.pattern) === 'block'
       ? pitches.map(pitch => ({pitch, startBeat:bar*4, durationBeats:3.8, velocity:78}))
       : Array.from({length:8}, (_,i) => ({pitch:pitches[[0,1,2,1,0,1,2,1][i]], startBeat:bar*4+i/2, durationBeats:0.45, velocity:i%2 ? 65:82}));
   });
@@ -84,6 +112,16 @@ export function playbackParts(track: Track): Part[] {
   const parts=partsFor(track), hasSolo=parts.some(part=>part.solo);
   return parts.filter(part=>!part.muted && (!hasSolo || part.solo));
 }
+/** 区間境界で音符を分割し、手編集の正本を変えずに音色を切り替える。 */
+export function performanceParts(track: Track): Part[] {
+  return playbackParts(track).flatMap(part => (track.sections ?? [{startBar:0}]).map((section,index,sections) => {
+    const start = section.startBar * 4, end = (sections[index+1]?.startBar ?? 8) * 4;
+    return {...part, instrument:instrumentAt(track,part,start), notes:part.notes.flatMap(note => {
+      const from = Math.max(start,note.startBeat), to = Math.min(end,note.startBeat+note.durationBeats);
+      return to > from ? [{...note,startBeat:from,durationBeats:to-from}] : [];
+    })};
+  }));
+}
 export function updatePart(track: Track, id: string, patch: Partial<Omit<Part,'id'>>): Track {
   let next: Track;
   if(id==='main') next={...track,...patch};
@@ -91,6 +129,14 @@ export function updatePart(track: Track, id: string, patch: Partial<Omit<Part,'i
     if(!track.layers?.some(part=>part.id===id)) throw new Error('対象のトラックがありません。');
     next={...track,layers:track.layers.map(part=>part.id===id?{...part,...patch}:part)};
   }
+  if (patch.instrument && next.sections) {
+    const role = id === 'main' ? 'accompaniment' : id === 'generated-melody' ? 'melody' : id === 'generated-bass' ? 'bass' : undefined;
+    if (role) next = {...next,sections:next.sections.map(section=>({...section,[role]:patch.instrument}))};
+  }
+  validateTrack(next); return next;
+}
+export function setTempo(track: Track, bpm: number): Track {
+  const next = {...track,bpm,sections:track.sections?.map(section=>({...section,bpm}))};
   validateTrack(next); return next;
 }
 export function addPart(track: Track, part: Part): Track {
@@ -129,10 +175,10 @@ export function arrangeSong(song: Song): Track {
     }));
   });
   const track: Track = {
-    ...createTrack(song), name: 'コード伴奏', instrument: 'piano', volume: .65,
+    ...createTrack(song), name: 'コード伴奏', instrument: song.sections?.[0].accompaniment ?? 'piano', volume: .65,
     layers: [
-      { id: 'generated-melody', name: 'メロディー', notes: melody, instrument: 'bell', volume: .85, muted: false, solo: false },
-      { id: 'generated-bass', name: 'ベース', notes: bass, instrument: 'electric', volume: .75, muted: false, solo: false },
+      { id: 'generated-melody', name: 'メロディー', notes: melody, instrument: song.sections?.[0].melody ?? 'bell', volume: .85, muted: false, solo: false },
+      { id: 'generated-bass', name: 'ベース', notes: bass, instrument: song.sections?.[0].bass ?? 'electric', volume: .75, muted: false, solo: false },
     ],
   };
   validateTrack(track);
@@ -170,8 +216,11 @@ function trackChunk(events: {tick:number;data:number[]}[]): number[] {
 export function midiFor(song: Song | Track): Uint8Array {
   const track='notes' in song?song:createTrack(song);
   const audible=playbackParts(track);
-  const tempo=Math.round(60000000/song.bpm);
-  const meta=[{tick:0,data:[0xff,0x51,3,(tempo>>>16)&255,(tempo>>>8)&255,tempo&255]},{tick:0,data:[0xff,0x58,4,4,2,24,8]}];
+  const meta = (song.sections ?? [{ startBar: 0, bpm: song.bpm }]).map(section => {
+    const tempo = Math.round(60000000 / section.bpm);
+    return {tick:section.startBar*4*480,data:[0xff,0x51,3,(tempo>>>16)&255,(tempo>>>8)&255,tempo&255]};
+  });
+  meta.push({tick:0,data:[0xff,0x58,4,4,2,24,8]});
   const multiple=partsFor(track).length>1;
   const chunks:number[][]=multiple?[trackChunk(meta)]:[];
   const all=partsFor(track);
@@ -179,9 +228,9 @@ export function midiFor(song: Song | Track): Uint8Array {
     const channel=all.findIndex(item=>item.id===part.id);
     const events:{tick:number;data:number[]}[]=multiple?[]:[...meta];
     if(multiple) {const name=[...new TextEncoder().encode(part.name)];events.push({tick:0,data:[0xff,3,...vlq(name.length),...name]});}
-    events.push({tick:0,data:[0xc0|channel,instrumentFor(part.instrument).program]});
+    for (const startBar of song.sections?.map(section=>section.startBar) ?? [0]) events.push({tick:startBar*4*480,data:[0xc0|channel,instrumentFor(instrumentAt(song,part,startBar*4)).program]});
     if(multiple || part.volume!==1) events.push({tick:0,data:[0xb0|channel,7,Math.round(part.volume*127)]});
-    for(const note of part.notes){
+    for(const note of performanceParts(track).filter(segment=>segment.id===part.id).flatMap(segment=>segment.notes)){
       events.push({tick:Math.round(note.startBeat*480),data:[0x90|channel,note.pitch,note.velocity]});
       events.push({tick:Math.round((note.startBeat+note.durationBeats)*480),data:[0x80|channel,note.pitch,0]});
     }

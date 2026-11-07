@@ -1,5 +1,5 @@
 import { instrumentFor } from './instruments';
-import { playbackParts, type Track } from './music';
+import { performanceParts, secondsAt, beatAtSeconds, type Track } from './music';
 import { sampleFor } from './soundfont';
 export type PlaybackStatus = 'ready' | 'loading';
 export class Player {
@@ -7,16 +7,16 @@ export class Player {
   private timer?: number;
   private startedAt?: number;
   private offsetBeat=0;
-  private secondsPerBeat=.6;
+  private playingSong?: Track;
   currentBeat() {
     return this.context && this.startedAt!==undefined
-      ? Math.min(32,Math.max(this.offsetBeat,this.offsetBeat+(this.context.currentTime-this.startedAt)/this.secondsPerBeat))
+      ? Math.min(32,Math.max(this.offsetBeat,(this.playingSong ? beatAtSeconds(this.playingSong, secondsAt(this.playingSong,this.offsetBeat)+this.context.currentTime-this.startedAt) : this.offsetBeat)))
       : this.offsetBeat;
   }
   stop() { this.startedAt=undefined; clearInterval(this.timer); if(this.context) void this.context.close().catch(()=>{}); this.context=undefined; }
   async play(song: Track, position: (beat:number)=>void, status: (value:PlaybackStatus)=>void = ()=>{}, fromBeat=0) {
     if(!Number.isFinite(fromBeat)||fromBeat<0||fromBeat>=32) throw new Error('再生位置は0以上32拍未満で指定してください。');
-    const parts=playbackParts(song).map(part=>({...part,notes:part.notes.filter(note=>note.startBeat+note.durationBeats>fromBeat)}));
+    const parts=performanceParts(song).map(part=>({...part,notes:part.notes.filter(note=>note.startBeat+note.durationBeats>fromBeat)}));
     this.stop();
     this.offsetBeat=fromBeat;
     const ctx = new AudioContext(); this.context=ctx;
@@ -35,8 +35,9 @@ export class Player {
       }));
       if(this.context!==ctx) return;
       status('ready');
-      const start=ctx.currentTime+0.08, beat=60/song.bpm;
-      this.startedAt=start; this.secondsPerBeat=beat;
+      const start=ctx.currentTime+0.08;
+      const seconds=(beat:number)=>secondsAt(song,beat);
+      this.startedAt=start; this.playingSong=song;
       position(fromBeat);
       // All sources share the same clock; a compressor prevents layered peaks clipping.
       const master=ctx.createDynamicsCompressor();
@@ -47,13 +48,13 @@ export class Player {
         const instrument=instrumentFor(part.instrument);
         for(const note of part.notes) {
           const skippedBeats=Math.max(0,fromBeat-note.startBeat);
-          const time=start+(Math.max(note.startBeat,fromBeat)-fromBeat)*beat, duration=(note.durationBeats-skippedBeats)*beat;
+          const time=start+seconds(Math.max(note.startBeat,fromBeat))-seconds(fromBeat), duration=seconds(note.startBeat+note.durationBeats)-seconds(Math.max(note.startBeat,fromBeat));
           const peak=note.velocity/127*instrument.level*part.volume;
           if ('file' in instrument) {
             const gain=ctx.createGain(), source=ctx.createBufferSource();
             const buffer=samples.get(`${instrument.file}:${note.pitch}`);
             if (!buffer) throw new Error('音符に対応する音源を読み込めませんでした。');
-            const offset=skippedBeats*beat;
+            const offset=seconds(note.startBeat+skippedBeats)-seconds(note.startBeat);
             if(offset>=buffer.duration) continue;
             source.buffer=buffer;
             gain.gain.setValueAtTime(0,time);
