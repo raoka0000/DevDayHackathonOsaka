@@ -1,0 +1,81 @@
+PhotoChord Cloudflare Deployment Artifacts
+==========================================
+
+Prepared: 2026-11-07 06:05 UTC
+Source Commit: 672d423a5f7c91d41c122c2a876f1260342a09a7
+Repository: https://github.com/raoka0000/DevDayHackathonOsaka
+
+Build Verification
+------------------
+✓ TypeScript type check: PASSED
+✓ Tests (8 suites): ALL PASSED
+✓ Production build: SUCCESS
+
+Artifact Files (Ready for Coordinator Upload)
+----------------------------------------------
+1. /workspace/artifacts/photochord-dist.zip (79 KB)
+   - Contains complete dist/ directory with production build
+   - index.html + bundled JS/CSS assets
+   - SHA256: 252140c504f4ce83935b0bd0a998996b1e993816690eba0b6774591bdf95d084
+
+2. /workspace/artifacts/photochord-deploy-manifest.json (2.3 KB)
+   - Deployment metadata and configuration
+   - Source commit, file checksums, deployment notes
+   - SHA256: 3032cab2090157abed751309dfaa84d3f0bda95d24cd0f49d5fbd7f43d9a4dfb
+
+Deployment Type
+---------------
+STATIC SITE ONLY - No backend Worker required
+
+This is a pure static React SPA deployment using Cloudflare Workers Assets.
+The wrangler.jsonc is configured for static asset serving with SPA routing.
+
+Wrangler Configuration
+----------------------
+Name: photochord
+Compatibility Date: 2026-11-07
+Assets Directory: ./dist
+Not Found Handling: single-page-application
+
+Current Application State
+-------------------------
+IMPLEMENTED:
+- Photo upload UI (preview only, no server upload)
+- Fixed sample music ("晴れた日の思い出")
+- Chord progression editing (8 bars, 14 chord types)
+- Tempo control (60-160 BPM)
+- Pattern switching (arpeggio/block chords)
+- Piano roll MIDI editor (note-level editing)
+- Playback (Web Audio API)
+- MIDI file export
+- Undo functionality (30 steps)
+
+NOT IMPLEMENTED (Design Only):
+- AI image analysis for initial music generation
+- AI natural language editing suggestions
+- Database persistence (D1)
+- File storage (R2)
+- Backend API endpoints
+
+Security & Privacy
+------------------
+✓ No secrets included in build artifacts
+✓ No API keys in client code
+✓ Photos remain client-side only (explicitly stated in UI)
+✓ No node_modules or source code in archive
+
+Ready for Deployment
+--------------------
+The static assets are production-ready and can be deployed immediately.
+The application will function with its current fixed-sample editing features.
+AI integration will require future backend implementation.
+
+Coordinator Instructions
+------------------------
+1. Extract photochord-dist.zip contents
+2. Upload files to Cloudflare Workers Assets using MCP
+3. Configure worker name as "photochord"
+4. Set compatibility date to "2026-11-07"
+5. Enable SPA routing (not_found_handling: single-page-application)
+6. Deploy and test at generated *.workers.dev URL
+

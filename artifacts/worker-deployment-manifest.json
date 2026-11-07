@@ -1,0 +1,100 @@
+{
+  "deployment_method": "multipart_worker_upload",
+  "deployment": {
+    "project_name": "photochord",
+    "version": "0.1.0",
+    "type": "worker_with_data_modules",
+    "source_commit": "672d423a5f7c91d41c122c2a876f1260342a09a7",
+    "source_repository": "https://github.com/raoka0000/DevDayHackathonOsaka",
+    "build_timestamp": "2026-11-07T06:04:00Z"
+  },
+  "worker_configuration": {
+    "main_module": "worker.js",
+    "compatibility_date": "2026-11-07",
+    "observability": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "usage_model": "bundled",
+    "bindings": [],
+    "assets_property": false,
+    "note": "NO assets property - all files imported as Data modules"
+  },
+  "modules": {
+    "worker.js": {
+      "type": "esm",
+      "size_bytes": 2528,
+      "sha256": "b607d2a54b13d170cf39985b47632e3437bdb098b27c3a57a048925ac0e0cd8d",
+      "description": "Main Worker script with routing logic"
+    },
+    "asset-0.bin": {
+      "type": "buffer",
+      "original_path": "index.html",
+      "size_bytes": 443,
+      "mime_type": "text/html",
+      "cache_control": "no-cache",
+      "routes": ["/", "/index.html"]
+    },
+    "asset-1.bin": {
+      "type": "buffer",
+      "original_path": "assets/index-DCmNTNtN.js",
+      "size_bytes": 240809,
+      "mime_type": "application/javascript",
+      "cache_control": "public, max-age=31536000, immutable",
+      "routes": ["/assets/index-DCmNTNtN.js"]
+    },
+    "asset-2.bin": {
+      "type": "buffer",
+      "original_path": "assets/index-DtvVsUGo.css",
+      "size_bytes": 11382,
+      "mime_type": "text/css",
+      "cache_control": "public, max-age=31536000, immutable",
+      "routes": ["/assets/index-DtvVsUGo.css"]
+    }
+  },
+  "total_size": {
+    "all_modules_bytes": 255162,
+    "all_modules_kb": 249.2,
+    "worker_script_bytes": 2528,
+    "static_assets_bytes": 252634
+  },
+  "routing_behavior": {
+    "spa_fallback": true,
+    "fallback_file": "asset-0.bin (index.html)",
+    "excluded_from_fallback": ["/api/*", "/assets/*", "file-like paths (*.ext)"],
+    "methods_allowed": ["GET", "HEAD"],
+    "other_methods_response": "405 Method Not Allowed",
+    "unknown_assets_response": "404 Not Found"
+  },
+  "security": {
+    "x_content_type_options": "nosniff",
+    "external_fetches": false,
+    "eval_usage": false,
+    "secrets_embedded": false
+  },
+  "special_files": {
+    "_headers": false,
+    "_redirects": false,
+    "htaccess": false,
+    "note": "No special routing files present"
+  },
+  "upload_artifacts": {
+    "payload_file": "worker-upload-payload.json",
+    "payload_size_bytes": 341248,
+    "payload_sha256": "83593f6848002fd31b6dd750ecaf5acfedeaa6282e8082cecaa448c43516d866",
+    "worker_script_file": "worker.js",
+    "format": "JSON with base64-encoded modules"
+  },
+  "official_references": [
+    "https://developers.cloudflare.com/workers/wrangler/bundling/",
+    "https://developers.cloudflare.com/workers/configuration/multipart-upload-metadata/"
+  ],
+  "deployment_notes": {
+    "method": "Use Cloudflare API multipart Worker PUT",
+    "payload": "worker-upload-payload.json contains all modules as base64",
+    "worker_imports": "Data modules imported as ArrayBuffers in worker.js",
+    "no_wrangler": "This artifact is for direct API upload, not wrangler deploy",
+    "alternative_to": "Standard assets-based deployment (photochord-dist.zip)",
+    "suitable_for": "Small temporary UI deployments via authenticated API"
+  }
+}

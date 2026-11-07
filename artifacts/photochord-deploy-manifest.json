@@ -1,0 +1,66 @@
+{
+  "deployment": {
+    "project_name": "photochord",
+    "version": "0.1.0",
+    "type": "static_assets_only",
+    "source_commit": "672d423a5f7c91d41c122c2a876f1260342a09a7",
+    "source_repository": "https://github.com/raoka0000/DevDayHackathonOsaka",
+    "build_timestamp": "2026-11-07T06:04:00Z",
+    "build_checks": {
+      "typecheck": "passed",
+      "tests": "passed (8/8)",
+      "build": "passed"
+    }
+  },
+  "wrangler_config": {
+    "name": "photochord",
+    "compatibility_date": "2026-11-07",
+    "assets": {
+      "directory": "./dist",
+      "not_found_handling": "single-page-application"
+    }
+  },
+  "deployment_type": {
+    "mode": "static_site",
+    "backend_worker": false,
+    "description": "Pure static React SPA, no backend Worker required. All assets served from dist/ directory."
+  },
+  "artifacts": {
+    "dist_archive": "photochord-dist.zip",
+    "dist_archive_size_bytes": 80896,
+    "contents": [
+      {
+        "path": "index.html",
+        "size_bytes": 443,
+        "sha256": "7d942f04e65f18b746163337705b8cddc8150d786aeb5fe4cc6a1acb0cd9c15e",
+        "content_type": "text/html"
+      },
+      {
+        "path": "assets/index-DCmNTNtN.js",
+        "size_bytes": 240809,
+        "sha256": "c1f0a9ab311fe4160d763069a75478ad093b30cef0f28741aa8cb155f982d85d",
+        "content_type": "application/javascript"
+      },
+      {
+        "path": "assets/index-DtvVsUGo.css",
+        "size_bytes": 11382,
+        "sha256": "fd8172f2558e66ae4afd13606eec40eea2782f456efb4122b1af64559d518948",
+        "content_type": "text/css"
+      }
+    ]
+  },
+  "deployment_notes": {
+    "ai_integration": "NOT_IMPLEMENTED - Image analysis and AI editing APIs are not yet connected",
+    "database": "NOT_IMPLEMENTED - No D1 database or R2 storage configured",
+    "backend_apis": "NOT_IMPLEMENTED - No API endpoints exist, only static frontend",
+    "current_functionality": "Fixed sample music editing, chord/tempo/pattern changes, playback, MIDI export, piano roll editor",
+    "photo_handling": "Photos are preview-only in browser, not uploaded to server",
+    "deployment_ready": "YES - Static assets are production-ready for immediate deployment"
+  },
+  "environment_requirements": {
+    "node_version": ">=22.12.0",
+    "secrets_required": [],
+    "environment_variables": [],
+    "bindings_required": []
+  }
+}
