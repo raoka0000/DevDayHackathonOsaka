@@ -1,14 +1,22 @@
 // POST /api/songs - 写真から初期音楽設定を生成
 // OpenAI Vision APIを使用してサーバー側で画像を分析
+// レート制限とコスト制御を実装
 
 interface Env {
   OPENAI_API_KEY?: string;
   ASSETS: Fetcher;
+  RATE_LIMITER?: KVNamespace;
 }
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_BODY_SIZE = 12 * 1024 * 1024; // 12MB (画像+メタデータ)
 const REQUEST_TIMEOUT = 30000; // 30秒
 const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// シンプルなインメモリレート制限（共有Workerでは制限あり）
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW = 60000; // 1分
+const RATE_LIMIT_MAX = 3; // 1分あたり3リクエスト
 
 // OpenAI APIレスポンスの型（構造検証用）
 interface OpenAIMessage {
@@ -107,6 +115,67 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
+    // Origin検証（任意のCORS許可なし）
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    const url = new URL(request.url);
+    
+    // 同一オリジンまたはリファラーチェック（本番では厳密化）
+    if (origin && !origin.includes(url.hostname)) {
+      // 開発時のlocalhostは許可
+      if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+        return new Response(
+          JSON.stringify({ error: 'アクセスが拒否されました。' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Content-Length事前チェック（バッファリング前）
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_BODY_SIZE) {
+      return new Response(
+        JSON.stringify({ error: 'リクエストサイズが大きすぎます。' }),
+        { status: 413, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // シンプルなレート制限（IP単位、共有Workerでは完全ではない）
+    const clientIP = request.headers.get('cf-connecting-ip') || 'unknown';
+    const now = Date.now();
+    const rateLimitKey = clientIP;
+    
+    const record = requestCounts.get(rateLimitKey);
+    if (record) {
+      if (now < record.resetTime) {
+        if (record.count >= RATE_LIMIT_MAX) {
+          return new Response(
+            JSON.stringify({ error: 'リクエストが多すぎます。1分後に再試行してください。' }),
+            { 
+              status: 429, 
+              headers: { 
+                'Content-Type': 'application/json',
+                'Retry-After': Math.ceil((record.resetTime - now) / 1000).toString()
+              } 
+            }
+          );
+        }
+        record.count++;
+      } else {
+        requestCounts.set(rateLimitKey, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+      }
+    } else {
+      requestCounts.set(rateLimitKey, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    }
+
+    // 古いエントリーのクリーンアップ（メモリ管理）
+    if (requestCounts.size > 10000) {
+      for (const [key, value] of requestCounts.entries()) {
+        if (now > value.resetTime + 60000) {
+          requestCounts.delete(key);
+        }
+      }
+    }
     // Content-Type確認
     const contentType = request.headers.get('content-type') || '';
     if (!contentType.startsWith('multipart/form-data')) {
@@ -219,7 +288,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     // レスポンス構造検証
     if (!responseData.choices || !Array.isArray(responseData.choices) || responseData.choices.length === 0) {
-      console.error('Invalid OpenAI response structure:', JSON.stringify(responseData).slice(0, 200));
+      console.error('Invalid OpenAI response structure');
       return new Response(
         JSON.stringify({ error: '応答の解析に失敗しました。再試行してください。' }),
         { status: 502, headers: { 'Content-Type': 'application/json' } }
@@ -235,19 +304,37 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       );
     }
 
+    // コンテンツサイズ検証
+    if (choice.message.content.length > 10000) {
+      console.error('Response content too large');
+      return new Response(
+        JSON.stringify({ error: '応答が大きすぎます。再試行してください。' }),
+        { status: 502, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // JSON解析
     let musicData: unknown;
     try {
       musicData = JSON.parse(choice.message.content);
     } catch (parseError) {
-      console.error('JSON parse error:', parseError);
+      console.error('JSON parse error');
       return new Response(
         JSON.stringify({ error: '応答の形式が不正です。再試行してください。' }),
         { status: 502, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // 音楽設定の検証
+    // 基本的な型チェック
+    if (!musicData || typeof musicData !== 'object' || Array.isArray(musicData)) {
+      console.error('Invalid music data type');
+      return new Response(
+        JSON.stringify({ error: '応答の形式が不正です。再試行してください。' }),
+        { status: 502, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 音楽設定の検証（詳細な検証）
     const settings = validateMusicSettings(musicData);
 
     return new Response(
